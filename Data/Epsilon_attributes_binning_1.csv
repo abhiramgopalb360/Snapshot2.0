@@ -1,0 +1,203 @@
+﻿Attribute,Category,Snowflake Field names,flag_continuous,Bin
+Niches 4.0,DEMO_HH,NICHES_40,0,
+Ethnic Group Code - Household,DEMO_HH,ETHNIC_GROUP_CODE_HOUSEHOLD,0,
+"Individual Exact Age (Enhanced);
+Person 1: Individual Exact Age",DEMO_IND,INDIVIDUAL_EXACT_AGE1,1,"0,18.0,35.0,41.0,47.0,52.0,56.0,60.0,64.0,69.0,75.0,95.0,200.0"
+"Ethnic Group Code, Person 1",DEMO_IND,ETHNIC_GROUP1,0,
+"Religion Code, Person 1",DEMO_IND,RELIGION1,0,
+Living Area Square Feet,HOME,LIVING_AREA_SQ_FTG_RANGE,0,
+Property Lot Size in Acres,HOME,PROPERTY_LOT_SIZE_IN_ACRES_DUPLICATE,0,
+Year Home Built,HOME,YEAR_HOME_BUILT,0,"1900.0, 1925.0, 1935.0, 1950.0, 1955.0, 1960.0, 1965.0, 1975.0, 1990.0, 2000.0, 2025.0"
+Structure Code,HOME,STRUCTURE_CODE,1,"7.0, 8.0, 15.0, 27.0,35.0"
+Current Loan to Value,HOME,CURRENT_LOAN_TO_VALUE,1,"35.0, 50.0, 60.0, 65.0, 75.0, 80.0, 85.0, 95.0, 110.0,995.0"
+Target Home Market Value 2.0,HOME,TGT_HOME_MKT_VALUE_20,0,
+Home Market Value (Tax Record),HOME,HOME_MKT_VALUE_TAX_RECORD,1," 340.0, 445.0, 520.0, 590.0, 660.0, 745.0, 855.0, 1005.0, 1315.0, 9975.0"
+Available Home Equity,HOME,AVA_HOME_EQUITY_IN_K,1,"45.0, 95.0, 145.0, 195.0, 250.0, 325.0, 425.0, 605.0, 4140.0"
+Home Sale Price,HOME,HOME_SALE_PRICE_IN_K,1," 240.0, 345.0, 420.0, 490.0, 565.0, 650.0, 755.0, 905.0, 1265.0, 9999.0"
+First Mortgage Amount; 1st Mortgage Amount,HOME,FIRST_MORTG_AMOUNT_IN_K,1,"210.0, 290.0, 350.0, 400.0, 450.0, 510.0, 595.0, 700.0, 950.0, 7890.0"
+Second Mortgage Amount; 2nd Mortgage Amount,HOME,FIRST_MORTG_AMOUNT_IN_K,1,"210.0, 290.0, 350.0, 400.0, 450.0, 510.0, 595.0, 700.0, 950.0, 7890.0"
+Interest Rate; Mortgage Interest Rate,HOME,MORTG_INTEREST_RATE_REFIN,1,"425.0, 470.0, 515.0, 550.0, 585.0, 610.0, 640.0, 685.0, 725.0, 935.0"
+Living Area Square Feet,HOME,LIVING_AREA_SQ_FTG_RANGE,0,
+Property Lot Size in Acres,HOME,PROPERTY_LOT_SIZE_IN_ACRES_DUPLICATE,0,
+Year Home Built,HOME,YEAR_HOME_BUILT,1,"1925.0, 1935.0, 1950.0, 1955.0, 1960.0, 1965.0, 1975.0, 1990.0, 2005.0, 2025.0"
+Structure Code,HOME,STRUCTURE_CODE,1,"7.0, 8.0, 11.0, 13.0, 30.0, 35.0"
+Income Tiers,FINANCIAL,INCOME_TIERS,0,
+Investment Resources Tiers,FINANCIAL,INVESTMENT_RESOURCES_TIERS,1,"8.0, 10.0, 15.0"
+Home Value Tiers,FINANCIAL,HOME_VALUE_TIERS,0,
+Liquid Resources Tier,FINANCIAL,LIQUID_RESOURCES,1,"10.0, 15.0"
+Mortgage Liability Tiers,FINANCIAL,MORTGAGE_LIABILITY_TIERS,1,"55.0, 135.0, 205.0, 260.0, 320.0, 380.0, 440.0, 530.0, 700.0, 9000.0"
+Net Worth Tiers,FINANCIAL,NET_WORTH_TIERS,0,
+Target Net Worth 4.0,FINANCIAL,TARGET_NET_WORTH_4_0,0,
+Liquid Resources 2.0,FINANCIAL,LIQUID_RESOURCES,1,"8.0, 11.0, 12.0, 13.0, 14.0"
+Investment Resources 2.0,FINANCIAL,INVESTMENT_RESOURCES,1,"8.0, 9.0, 11.0, 12.0"
+Mortgage Liability 2.0,FINANCIAL,MORTG_LIABILITY,1," 33.0, 74.0, 140.0, 240.0, 310.0, 375.0, 430.0, 525.0, 690.0, 9000.0"
+MeritScore,FINANCIAL,MERITSCORE,0,
+Vehicle Class Code - Vehicle 1,AUTO,VEHICLE_CLASS_CODE_1,1,"4.0, 6.0, 8.0, 9.0, 11.0, 12.0"
+Likely to Buy Domestic Vehicle,AUTO,LIKELY_TO_BUY_DOMESTIC_VEHICLE,1,"7.0, 10.0, 20.0, 25.0, 35.0, 40.0, 50.0, 60.0, 75.0, 100.0"
+Likely to Buy Import Vehicle,AUTO,LIKELY_TO_BUY_IMPORT_VEHICLE,1," 5.0, 10.0, 15.0, 20.0, 30.0, 35.0, 45.0, 55.0, 70.0, 100.0"
+Likely to Buy New Vehicle,AUTO,LIKELY_TO_BUY_NEW_VEHICLE,1," 5.0, 10.0, 15.0, 20.0, 30.0, 35.0, 45.0, 55.0, 70.0, 100.0"
+Likely to Buy Used Vehicle,AUTO,LIKELY_TO_BUY_USED_VEHICLE,1,"15.0, 30.0, 40.0, 50.0, 60.0, 70.0, 75.0, 85.0, 95.0, 100.0"
+Likely to Purchase Same Manufacturer,AUTO,LIKELY_TO_PURCHASE_SAME_MANUFACTURER,1," 2.0, 5.0, 8.0, 10.0, 15.0, 20.0, 30.0, 35.0, 50.0, 100.0"
+Likely to Use Dealer Service,AUTO,LIKELY_TO_USE_DEALER_SERVICE,1,"5.0, 10.0, 20.0, 25.0, 30.0, 35.0, 45.0, 55.0, 65.0, 100.0"
+Number of Generations in Household (Enhanced),DEMO_HH,NUM_GENERATIONS_HH_ENH,0,
+Advantage Household Marital Status,DEMO_HH,ADV_HH_MARITAL_STATUS,0,
+Advantage Number of Adults,DEMO_HH,ADV_NUM_ADULTS,1,
+Advantage Length of Residence,DEMO_HH,ADV_LENGTH_RESIDENCE,0,
+Advantage Presence of Children,DEMO_HH,ADV_PREZ_CHILDREN_ENH,1,
+Advantage Household Size (Enhanced),DEMO_HH,ADV_HH_SIZE_ENH,1,
+Advantage Household Education (Enhanced),DEMO_HH,ADV_HH_EDU_ENH,1,
+Occupation; Household Occupation,DEMO_HH,ADV_HH_AGE_CODE_ENH,0,
+Household Political Party,DEMO_HH,POLITICAL_PARTY_HH,0,
+Political Donor Propensity,DEMO_HH,POLITICAL_DONOR_PROPS,0,
+LifeCycle: Baby Boomers,DEMO_HH,LIFECYCLE_BABY_BOOMERS,0,
+LifeCycle: DINK (Dual Income No Kids),DEMO_HH,LIFECYCLE_DINKS_DUAL_INCOME_NO_KIDS,0,
+LifeCycle: Family Ties,DEMO_HH,LIFECYCLE_FAMILY_TIES,0,
+LifeCycle: Generation X,DEMO_HH,LIFECYCLE_GENERATION_X,0,
+LifeCycle: Millennials,DEMO_HH,LIFECYCLE_MILLENNIALS,0,
+LifeCycle: Millennials #imanadult,DEMO_HH,LIFECYCLE_MILLENNIALS_IMANADULT,0,
+LifeCycle: Millennials #liveswithmom,DEMO_HH,LIFECYCLE_MILLENNIALS_LIVESWITHMOM,0,
+LifeCycle: Millennials #gettinhitched,DEMO_HH,LIFECYCLE_MILLENNIALS_GETTINHITCHED,0,
+LifeCycle: Millennials #momlife,DEMO_HH,LIFECYCLE_MILLENNIALS_MOMLIFE,0,
+LifeCycle: Millennials #puttingdownroots,DEMO_HH,LIFECYCLE_MILLENNIALS_PUTTINGDOWNROOTS,0,
+LifeCycle: Millennials #butfirstletmetakeaselfie,DEMO_HH,LIFECYCLE_MILLENNIALS_BUTFIRSTLETMETAKEASELFIE,0,
+"Gender Code Person 1;
+Person 1 Gender",DEMO_IND,GENDER1,1,"1.0,2.0"
+"Advantage Individual Marital Status - Person 1;
+Person 1 Advantage Marital Status",DEMO_IND,ADV_IND_MARITAL_STATUS1,1,"1.0,2.0"
+"Individual Political Party;
+Person 1: Individual Political Party",DEMO_IND,POLITICAL_PARTY_INDIVIDUAL_1,0,
+"Agility Occupancy Score - Person 1;
+Person 1: Agility Occupancy Score",DEMO_IND,AGILITY_OCCUPANCY_SCORE_1,0,
+"Assimilation Code, Person 1 ",DEMO_IND,ASSIMILATION_CODE1,0,
+Roof Type,HOME,ROOF_COVER_TYP,0,
+Home Heat Source,HOME,HOME_HEAT_SOURCE,0,
+Fuel Code,HOME,FUEL_CODE,0,
+"Mortgage or Refinance Interest Rate Type;
+Mortgage Interest Rate Type",HOME,MORTG_INTEREST_RATE_TYP_REFIN,0,
+"Mortgage or Refinance Loan Type;
+Mortgage Loan Type ",HOME,MORTG_LOAN_TYP_REFIN,0,
+Refinance Indicator     ,HOME,REFIN_INDICATOR,0,
+Roof Type,HOME,ROOF_COVER_TYP,0,
+Home Heat Source,HOME,HOME_HEAT_SOURCE,0,
+Fuel Code,HOME,FUEL_CODE,0,
+State Abbreviation,GEO,STATE,0,
+Short Term Liability Tiers,FINANCIAL,SHORT_TERM_LIABILITY_TIERS,0,
+Wealth Resources Tiers,FINANCIAL,WEALTH_RESOURCES_TIERS,0,
+Wealth Resources 2.0,FINANCIAL,WEALTH_RESOURCES,0,
+Short Term Liability 2.0,FINANCIAL,SHORT_TERM_LIABILITY,0,
+Target Net Worth 3.0,FINANCIAL,TGT_NET_WORTH_30,0,
+Silver Wallets,FINANCIAL,SILVER_WALLETS,0,
+Gold Wallets,FINANCIAL,GOLD_WALLETS,0,
+Platinum Wallets,FINANCIAL,PLATINUM_WALLETS,0,
+Low-End Department,FINANCIAL,TYP_CC_LOW_END_DEPART_STORE,0,
+Main Street Retail,FINANCIAL,TYP_CC_MAIN_STR_RETAIL,0,
+Specialty Apparel,FINANCIAL,TYP_CC_SPECIALTY_APPRL,0,
+Catalog Showroom,FINANCIAL,TYP_CC_CATALOG_SHOWROOM,0,
+Computer/Electronic,FINANCIAL,TYP_CC_COMPUTER_ELECTRONIC,0,
+Furniture,FINANCIAL,TYP_CC_FURNITURE,0,
+Home/Office Supply,FINANCIAL,TYP_CC_HOME_OFFICE_SUPPLY,0,
+Home Improvement,FINANCIAL,TYP_CC_HOME_IMPROVEMENT,0,
+Membership Warehouse,FINANCIAL,TYP_CC_MEMBERSHIP_WAREHOUSE,0,
+Sporting Goods,FINANCIAL,TYP_CC_SPORTING_GOODS,0,
+TV Mail Order,FINANCIAL,TYP_CC_TV_MO,0,
+Grocery,FINANCIAL,TYP_CC_GROCERY,0,
+American Express,FINANCIAL,TYP_CC_AMERICAN_EXPRESS,0,
+MasterCard,FINANCIAL,TYP_CC_MASTERCARD,0,
+VISA,FINANCIAL,TYP_CC_VISA,0,
+Debit Card,FINANCIAL,TYP_CC_DEBIT_CARD,0,
+Any Credit Card,FINANCIAL,TYP_CC_ANY_CC,0,
+Misellaneous Credit Card,FINANCIAL,TYP_CC_MISC,0,
+Standard Retail Card,FINANCIAL,TYP_CC_STD_RETAIL,0,
+Standard Specialty Card,FINANCIAL,TYP_CC_STD_SPECIALTY_CARD,0,
+Upscale Retail Card,FINANCIAL,TYP_CC_UPSCALE_RETAIL,0,
+Upscale Specialty Retail Card,FINANCIAL,TYP_CC_UPSCALE_SPEC_RETAIL,0,
+Bank Card,FINANCIAL,TYP_CC_BANK_CARD,0,
+Oil/Gas Card,FINANCIAL,TYP_CC_OIL_GAS_CARD,0,
+Finance Company Card,FINANCIAL,TYP_CC_FIN_CO_CARD,0,
+Travel/Entertainment Card,FINANCIAL,TYP_CC_TRAVEL_ENTERTAINMENT,0,
+"Mail Order Buyer
+Buyer Flag",MARKET_INDICATOR,MO_BUYER,0,
+"Purchase Date Range
+Activity - Purchase Date Range",MARKET_INDICATOR,PURCHASE_DATE_RANGE,0,
+"Channel Preference Ratio: Catalog Quintile;
+Channel Preference Ratio Quintile: Catalog;
+Channel Preference Ratio - Catalog Quintile",MARKET_INDICATOR,CHANNEL_PREF_RT_CATALOG_QUINT,0,
+"Channel Preference Ratio: Retail Quintile
+Channel Preference Ratio Quintile: Retail;
+Channel Preference Ratio - Retail Quintile",MARKET_INDICATOR,CHANNEL_PREF_RT_RETAIL_QUINT,0,
+"Channel Preference Ratio: Online Quintile
+Channel Preference Ratio Quintile: Online;
+Channel Preference Ratio - Online Quintile",MARKET_INDICATOR,CHANNEL_PREF_RT_ONLINE_QUINT,0,
+"Seasonality: Fall Ratio Quintile
+Fall Ratio Quintile;
+Seasonality - Fall Ratio Quintile",MARKET_INDICATOR,SEASONALITY_FALL_RATIO_QUINT,0,
+"Seasonality: Spring Ratio Quintile
+Spring Ratio Quintile;
+Seasonality - Spring Ratio Quintile",MARKET_INDICATOR,SEASONALITY_SPRING_RATIO_QUINT,0,
+"Seasonality: Summer Ratio Quintile
+Summer Ratio Quintile;
+Seasonality - Summer Ratio Quintile",MARKET_INDICATOR,SEASONALITY_SUMMER_RATIO_QUINT,0,
+"Seasonality: Winter Ratio Quintile
+Winter Ratio Quintile;
+Seasonality - Winter Ratio Quintile",MARKET_INDICATOR,SEASONALITY_WINTER_RATIO_QUINT,0,
+"Activity: Total Dollars Quintile
+Activity: Total Dollars Spent (Quintile);
+Activity - Total Dollars Quintile",MARKET_INDICATOR,ACT_TOT_DOLLARS_QUINT,0,
+"Activity: Total Online Dollars Quintile
+Activity: Total Dollars Spent Online (Quintile);
+Activity - Total Online Dollars Quintile",MARKET_INDICATOR,ACT_TOT_ONLINE_DOLLARS_QUINT,1,
+"Activity: Total Offline Dollars Quintile
+Activity: Total Dollars Spent Offline (Quintile);
+Activity - Total Offline Dollars Quintile",MARKET_INDICATOR,ACT_TOT_OFFLINE_DOLLARS_QUINT,0,
+"Activity: Number of Purchases Quintile
+Activity: Number of Purchases (Quintile);
+Activity - Number of Purchases Quintile",MARKET_INDICATOR,ACT_NUM_PURCHASE_QUINT,0,
+"Activity: Number of Online Purchases Quintile
+Activity: Number of Online Purchases (Quintile);
+Activity - Number of Online Purchases Quintile",MARKET_INDICATOR,ACT_NUM_ONLINE_PURCHASE_QUINT,0,
+"Activity: Number of Offline Purchases Quintile
+Activity: Number of Offline Purchases (Quintile);
+Activity - Number of Offline Purchases Quintile",MARKET_INDICATOR,ACT_NUM_OFFLINE_PURCHASE_QUINT,0,
+"Activity: Average Dollars Quintile
+Activity: Average Dollars Spent (Quintile);
+Activity - Average Dollars Quintile",MARKET_INDICATOR,ACT_AVG_DOLLARS_QUINT,0,
+Club/Continuity Buyer,MARKET_INDICATOR,CLUB_CONTINUITY_BUYER,0,
+Sports and Outdoor Quintile,MARKET_INDICATOR,SPORTS_OUTDOOR_QUINT,0,
+Arts & Crafts Quntile,MARKET_INDICATOR,ARTS_CRAFTS_QUINT,0,
+Children's Quintile,MARKET_INDICATOR,CHILDREN_QUINT,0,
+Fashion Accessories and Beauty Quintile,MARKET_INDICATOR,FASHION_ACC_BEAUTY_QUINT,0,
+Female and Male Apparel Quintile,MARKET_INDICATOR,F_M_APPRL_QUINT,0,
+General Gifts Quintile,MARKET_INDICATOR,GENERAL_GIFTS_QUINT,0,
+High Ticket Female Apparel/Accessories Quintile,MARKET_INDICATOR,HIGH_TKT_F_APPRL_ACC_QUINT,0,
+High Ticket Home DÃ©cor Quintile,MARKET_INDICATOR,HIGH_TKT_HOME_DECOR_QUINT,0,
+Low Ticket Female Apparel/Accessories Quintile,MARKET_INDICATOR,LOW_TKT_F_APPRL_ACC_QUINT,0,
+Magazines Quintile,MARKET_INDICATOR,MAGAZINES_QUINT,0,
+Male Apparel Quintile,MARKET_INDICATOR,M_APPRL_QUINT,0,
+Mid Ticket Female Apparel/Accessories Quintile,MARKET_INDICATOR,MID_TKT_F_APPRL_ACC_QUINT,0,
+Specialty Foods and Gifts Quintile,MARKET_INDICATOR,SPEC_FOOD_GIFT_QUINT,0,
+Tools & Electronics Quintile,MARKET_INDICATOR,TOOLS_ELEC_QUINT,0,
+Shoes Quintile,MARKET_INDICATOR,SHOES_QUINT,0,
+Beauty and Spa Quintile,MARKET_INDICATOR,BEAUTY_SPA_QUINT,0,
+Low-Ticket Male Apparel Quintile,MARKET_INDICATOR,LOW_TKT_M_APPRL_QUINT,0,
+Publishing Kitchen and Home Quintile,MARKET_INDICATOR,PUBLISH_KITCHEN_HOME_QUINT,0,
+Sports Merchandise and Activewear Quintile,MARKET_INDICATOR,SPORTS_MERCH_ACTWEAR_QUINT,0,
+Mid and High Ticket Male Apparel Quintile,MARKET_INDICATOR,MID_HIGH_TKT_M_APPRL_QUINT,0,
+Modern/Contemporary DÃ©cor and Gifts Quintile,MARKET_INDICATOR,MODERN_DECOR_GIFT_RCY_PURCH,0,
+Intimate Apparel and Undergarments Quintile,MARKET_INDICATOR,INTIMATE_APPRL_UG_QUINT,0,
+Facebook User - All,LIFESTYLE,FACEBOOK_USER_ALL,0,
+Instagram User - All,LIFESTYLE,INSTAGRAM_USER_ALL,0,
+Pinterest User - All,LIFESTYLE,PINTEREST_USER_ALL,0,
+Twitter User - All,LIFESTYLE,TWITTER_USER_ALL,0,
+Vehicle Fuel Type Code - Vehicle 1,AUTO,VEHICLE_FUEL_TYPE_CODE_1,0,
+Vehicle Manufacturing Code - Vehicle 1,AUTO,VEHICLE_MANUFACTURING_CODE_1,0,
+Vehicle Style Code - Vehicle 1,AUTO,VEHICLE_STYLE_CODE_1,0,
+Number of Vehicles in Household,AUTO,NUMBER_OF_VEHICLES_IN_HOUSEHOLD,0,
+Number of Cars in Household,AUTO,NUMBER_OF_CARS_IN_HOUSEHOLD,0,
+Number of Trucks in Household,AUTO,NUMBER_OF_TRUCKS_IN_HOUSEHOLD,0,
+,HOME,ADV_HH_EDU_ENH,1,
+,HOME,ADV_DWELLING_TYP,1,
+,HOME,ADV_HOME_OWNER,1,
+,HOME,ADV_LENGTH_RESIDENCE,1,
+,FINANCIAL,ADV_TGT_INCOME_30,1,
+,FINANCIAL,TGT_NET_WORTH_30,1,
+,FINANCIAL,ACT_NUM_PURCHASE_QUINT,1,
