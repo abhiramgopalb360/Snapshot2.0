@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: vyper
+Version: 2.0.3
+Summary: VIPER 2.0
+Home-page: https://github.com/charlesdublend360/viper_2
+Author: Blend360
+Requires-Python: >=3.5

@@ -1,0 +1,2 @@
+class SnowFlakeConnector:
+    pass
