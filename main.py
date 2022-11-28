@@ -7,6 +7,12 @@ from zipfile import ZipFile
 from io import BytesIO
 def main():
     st.title("SNAPSHOT TOOL")
+
+    
+    st.text("""The Snapshot tool aims to automate the profile comparison process on any dataset between various audience groups.
+    It is primarily used prior to the model building to compare prospects against the current customers.
+    Gives an insight about the audience groups at various levels - demographic, financial, lifestyle, market trend, etc""")
+    
     
     uploaded_file = st.file_uploader("Choose a file")
     if uploaded_file is not None:
@@ -23,9 +29,6 @@ def main():
     seg_var = 'category'
     epsilon_path = 'Data/Epsilon_Final.xlsx'
     bin_vars_path = 'Data/Epsilon_attributes_binning_2.csv'
-    # Read in file and set bins
-    text_contents = '''This is some text'''
-    st.download_button('Download some text', text_contents)
     
     if st.button("Run Code"):
         df,data1 = Snapshot_code.Snapshot_Profile(profile_data = new_df2, segment_var=seg_var, continuous_path = bin_vars_path,segments = None, segment_names = None, include = None,variable_order = None, other_segment = False,
