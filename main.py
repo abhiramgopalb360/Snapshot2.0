@@ -9,7 +9,7 @@ def main():
     st.title("SNAPSHOT TOOL")
 
     
-    st.text("""The Snapshot tool aims to automate the profile comparison process on any dataset between various audience groups.
+    st.markdown("""The Snapshot tool aims to automate the profile comparison process on any dataset between various audience groups.
     It is primarily used prior to the model building to compare prospects against the current customers.
     Gives an insight about the audience groups at various levels - demographic, financial, lifestyle, market trend, etc""")
     
