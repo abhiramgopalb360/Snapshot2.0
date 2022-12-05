@@ -1,17 +1,14 @@
 
 # %%
 from functools import reduce
-import pickle
-import tempfile
-from io import BytesIO
 import vyper
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from vyper.user import Model
 from vyper.utils.tools import StatisticalTools as st
 from vyper.user import Model
-from vyper.user.explorer import DataProfiler
-#from explorer import DataProfiler# 100522 customized explorer
+#from vyper.user.explorer import DataProfiler
+from explorer import DataProfiler# 100522 customized explorer
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from pandas.api.types import is_string_dtype
@@ -72,6 +69,8 @@ def addextra(epsilonpath,profile):
     Field_dict['Value'].fillna('',inplace = True)
     Field_dict.columns = ['NAME', 'Description', 'RATEID', 'Value', 'Value Description',
         'Current Count', 'Current %', 'Snowflake', 'Category']
+    # Confirm numpy is imported
+    import numpy as np
     prev_dict = {}
     
     def toDict(Field,Value,VD,snowflake,FDdescription):
@@ -107,7 +106,6 @@ def addextra(epsilonpath,profile):
             return prev_dict[x]['Field Description']
     profile.insert(2,'Definition','')
     profile['Definition'] = profile['Variable'].apply(lambda x:addFieldDesc(x))
-    #profile[profile['Variable'] == 'ADV_TGT_NARROW_BAND_INCOME_30'].loc[863,'Category']
     #print(profile[profile['Variable']=='ETHNIC_GROUP_CODE3'])
     #print(profile[profile['Variable']=='MT_CONSISTENT_RELIGIOUS_DONORS'])
     # Add Value Description
@@ -127,7 +125,6 @@ def addextra(epsilonpath,profile):
 
     profile.insert(4,'Description','')
     profile['Description'] = profile.apply(lambda x:addValuedescription(x['Variable'],x['Category']),axis = 1)
-
     #print(prev_dict['ETHNIC_GROUP_CODE3'])
     
     return profile
@@ -383,9 +380,6 @@ def report2(profile_extra,overall,savepath,continuous_path):
 
 
 def CreateXLProfile_Snap(profile,overall, savepath):
-
-    
-
     wb = Workbook()
 
     profile['Category'] = profile['Category'].astype(str)
@@ -555,20 +549,17 @@ def CreateXLProfile_Snap(profile,overall, savepath):
             ws2.cell(row=r_idx, column=c_idx, value=value)
 
 
+
     if (savepath != ''):
         wb.save(savepath)
-        merge(savepath)
-
-    return wb
-
-
+        merge(savepath) 
 
 
          
 
 # %%
 def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include, continuous_path,
-                     variable_order,save_path, other_segment = False, file = 'Profile', exclude = '',
+                     variable_order, other_segment = False, file = 'Profile', exclude = '',
                      PPT = True, continuous = [], excludeother = False,mapping_dict = {}) -> pd.DataFrame:
     
     print('20221025')
@@ -590,7 +581,7 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
     continuous_var_bounds = continuous_bins(continuous_path)
     profile_data = pd.DataFrame(profile_data)
     profile_data = preprocess(profile_data)
-
+    profile_data['ETHNIC_GROUP_CODE1'].nunique()
     for col in profile_data:
         try:
             profile_data[col] = pd.to_numeric(profile_data[col])
@@ -616,18 +607,20 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
         if (other_segment):
             segment_names = [segment_names, 'other']
     ## output -> [1 2 0]
-
+    profile_data['ETHNIC_GROUP_CODE1'].unique()
     varclass = pd.DataFrame()
-# 1005, raise threshold for OCCU AND DMA
+# 1005, raise threshold for OCCU AND DMA and 
     for col in profile_data.columns:
         if col in ['OCCUPATION']:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col],distint_values_threshold=30)], columns = [col])], axis=1)
         elif col in ['DMA']:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col],distint_values_threshold=400,max_categories=500)], columns = [col])], axis=1)
+        elif col in ['ETHNIC_GROUP_CODE1']:
+            varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col],distint_values_threshold=400,max_categories=500)], columns = [col])], axis=1)
         else:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col])], columns = [col])], axis=1)
-
     varclass[varclass.columns in continuous] = 'continuous'
+    varclass
     if (not (include is None)):
         exclude = varclass.columns[varclass.columns not in include]
     # Variables to exclude
@@ -675,6 +668,8 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
 
     profile = profile[col_order+index_order]
 
+    profile[profile['Variable']=='ETHNIC_GROUP_CODE1']
+    #print(profile)
     for i in profile.columns:
 
         if ('Count' in i):
@@ -741,20 +736,20 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
 
     for col in profile_extra.columns[profile_extra.columns.str.contains('Percent')]:
         profile_extra[col] = profile_extra[col]/100
-            
+    profile_extra[profile_extra['Variable']=='ETHNIC_GROUP_CODE1']      
     if file:
         import os
         # Make Profile ####
-        filesave = save_path + file + '.xlsx'
-        filesave2 = save_path + file + 'Category' + '.xlsx'
+        filesave = file + '.xlsx'
+        filesave2 = file + 'Category' + '.xlsx'
         if os.path.exists(filesave):
             os.remove(filesave)
         report2(profile_extra,overall = overall,savepath = filesave2,continuous_path = continuous_path)
-        k = CreateXLProfile_Snap(profile_extra,overall, savepath = filesave)
+        CreateXLProfile_Snap(profile_extra,overall, savepath = filesave)
         
         if PPT:
 
-            filesave = save_path + file + 'PPT' + '.xlsx'
+            filesave = file + 'PPT' + '.xlsx'
             lcn = str(profile.columns[-1])
             profile_sliced = profile[profile[lcn]>0]
             wb = Workbook()
@@ -841,7 +836,7 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
                     if ('Percent' in i):
                         percent_cols.append(i)
                 ##or min
-                temp_df['FLAG'] = (temp_df[percent_cols]>=.03).any(axis=1).astype(bool)
+                temp_df['FLAG'] = (temp_df[percent_cols]>=.001).any(axis=1).astype(bool)
                 temp_df = temp_df[temp_df['FLAG']]
                 temp_df = temp_df[~temp_df['Category'].isin(['NA','99',99,'Z'])]
                 if len(temp_df)==0:
@@ -939,8 +934,7 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
             wb.save(filesave)
 
     print('110322')
-    return profile_extra,k
-
+    return profile_extra
 # us_state = pd.read_csv('EPS_OPP_UNLOCK_08152022.csv')
 # unlock = pd.read_csv('unlock_append_06082022.csv')
 # # Read in the Epsilon Data Dictionary we created
@@ -970,7 +964,6 @@ def Snapshot_Profile(profile_data, segment_var, segments, segment_names, include
 # file_name = 'Unlock_08052022_Application Completed'
 # seg_var = 'category'
 # epsilon_path = 'Data/Epsilon_Final.xlsx'
-#  epsilonpath= epsilon_path
 # bin_vars_path = 'Epsilon_attributes_binning_2.csv'
 
 
@@ -1505,8 +1498,12 @@ def preprocess(df):
     except:
         pass
     #ETHNIC_GROUP_CODE_HOUSEHOLD->SS_ETHNIC_GROUP_CODE_HOUSEHOLD
-    df['ETHNIC_GROUP_CODE_HOUSEHOLD'] = df['ETHNIC_GROUP_CODE_HOUSEHOLD'].apply(letter_process_1)
-    df = df.drop('ADV_HH_EDU_ENH',axis=1)
+    try:
+        df['ETHNIC_GROUP_CODE_HOUSEHOLD'] = df['ETHNIC_GROUP_CODE_HOUSEHOLD'].apply(letter_process_1)
+        #df = df.drop('ETHNIC_GROUP_CODE_HOUSEHOLD',axis=1)
+    except:
+        pass
+    
     #POLITICAL_PARTY_HH->SS_POLITICAL_PARTY_HH
     try:
         df['SS_POLITICAL_PARTY_HH'] = df['POLITICAL_PARTY_HH'].apply(num_process7)
