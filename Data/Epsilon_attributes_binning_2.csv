@@ -62,8 +62,6 @@ LifeCycle: Millennials #puttingdownroots,DEMO_HH,LIFECYCLE_MILLENNIALS_PUTTINGDO
 LifeCycle: Millennials #butfirstletmetakeaselfie,DEMO_HH,LIFECYCLE_MILLENNIALS_BUTFIRSTLETMETAKEASELFIE,0,
 "Gender Code Person 1;
 Person 1 Gender",DEMO_IND,GENDER1,1,"1.0,2.0"
-"Advantage Individual Marital Status - Person 1;
-Person 1 Advantage Marital Status",DEMO_IND,ADV_IND_MARITAL_STATUS1,1,"1.0,2.0"
 "Individual Political Party;
 Person 1: Individual Political Party",DEMO_IND,POLITICAL_PARTY_INDIVIDUAL_1,0,
 "Agility Occupancy Score - Person 1;
