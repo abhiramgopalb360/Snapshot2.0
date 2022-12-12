@@ -352,7 +352,7 @@ def CreateXLProfile_Snap(profile, overall, savepath):
     max_cols = profile.shape[1]
 
     input_rows = range(4, max_rows + 4)
-    input_cols = list(string.ascii_uppercase)[1 : max_cols + 1]
+    input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
 
     y = 0
     for i in input_cols:
@@ -377,7 +377,7 @@ def CreateXLProfile_Snap(profile, overall, savepath):
     counter = []
     counter_val = 1
 
-    for index, i in enumerate(input_cols[5::]):
+    for index, i in enumerate(input_cols[2::]):
         x = "2"
         x = i + x
         if index % 2 == 1:
@@ -390,9 +390,9 @@ def CreateXLProfile_Snap(profile, overall, savepath):
 
         if (i == input_cols[-2]) or (i == input_cols[-1]):
             break
-        if i == "G":
+        if i == "D":
             all_var_profiling_ws[x] = "BASELINE"
-            all_var_profiling_ws.merge_cells(start_row=2, start_column=7, end_row=2, end_column=8)
+            all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
             counter.append(x)
             continue
         all_var_profiling_ws[x] = "Segment " + str(counter_val)
@@ -446,6 +446,9 @@ def CreateXLProfile_Snap(profile, overall, savepath):
     for range1 in all_var_profiling_ws.merged_cells.ranges:
         style_range(all_var_profiling_ws, str(range1), border=border)
 
+
+
+
     y = 0
     for i in input_cols:
         z = 0
@@ -475,10 +478,11 @@ def CreateXLProfile_Snap(profile, overall, savepath):
         y = y + 1
 
     print(profile.shape[1])
-    # if profile.shape[1] == 10:
-    #     allformat3(all_var_profiling_ws)
-    # else:
-    #     allformat2(all_var_profiling_ws)
+    if profile.shape[1] == 10:
+        allformat3(all_var_profiling_ws)
+    else:
+        allformat2(all_var_profiling_ws)
+
 
     ws2 = wb.create_sheet("Allcategory")
 
@@ -584,8 +588,6 @@ def Snapshot_Profile(
 
         else:
             continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=10, squash_extremes=False)
-
-    print(profile_data.head(n=25))
 
     col_order = []
     index_order = []
@@ -768,10 +770,22 @@ def Snapshot_Profile(
                 for i in temp_df.columns:
                     if "Percent" in i:
                         percent_cols.append(i)
-                # or min
+
+                if sum(temp_df["Category"].isin(["NA", "99", 99, "Z"])) > 0:
+                    # or min
+                    k = (temp_df[temp_df['Category'].isin(['NA'])][percent_cols] >= .55).any(axis=1).astype(bool)
+
+                    if sum(k) > 0:
+                        # delete that sheet
+                        std = wb.get_sheet_by_name(col)
+                        wb.remove_sheet(std)
+                        print(f"{std} removed")
+                        continue
+
                 temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
                 temp_df = temp_df[temp_df["FLAG"]]
                 temp_df = temp_df[~temp_df["Category"].isin(["NA", "99", 99, "Z"])]
+
                 if len(temp_df) == 0:
                     # delete that sheet
                     std = wb.get_sheet_by_name(col)
@@ -801,7 +815,7 @@ def Snapshot_Profile(
                 counter = []
                 counter_val = 1
                 input_cols = list(string.ascii_uppercase)[1 : max_cols + 1]
-                for index, i in enumerate(input_cols[5::]):
+                for index, i in enumerate(input_cols[2::]):
                     x = "2"
                     x = i + x
                     if index % 2 == 1:
@@ -814,9 +828,9 @@ def Snapshot_Profile(
 
                     if (i == input_cols[-2]) or (i == input_cols[-1]):
                         break
-                    if i == "G":
+                    if i == "D":
                         all_var_profiling_ws[x] = "BASELINE"
-                        all_var_profiling_ws.merge_cells(start_row=2, start_column=7, end_row=2, end_column=8)
+                        all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                         counter.append(x)
                         continue
                     all_var_profiling_ws[x] = "Segment " + str(counter_val)
@@ -849,11 +863,11 @@ def Snapshot_Profile(
                 else:
                     visual2(ws)
 
-                if profile_sliced.shape[1] > 10:
-                    allformat2(ws)
+                if profile_sliced.shape[1] == 10:
+                    allformat3(ws)
 
                 else:
-                    allformat3(ws)
+                    allformat2(ws)
 
             wb.save(filesave)
 
@@ -1047,19 +1061,19 @@ def allformat3(sheet):
     ws.column_dimensions["J"].width = 16
     ws.column_dimensions["K"].width = 16
 
-    for col in ws["H"]:
+    for col in ws["E"]:
+        col.number_format = "0%"
+
+    for col in ws["G"]:
+        col.number_format = "0%"
+
+    for col in ws["I"]:
         col.number_format = "0%"
 
     for col in ws["J"]:
-        col.number_format = "0%"
-
-    for col in ws["L"]:
-        col.number_format = "0%"
-
-    for col in ws["M"]:
         col.number_format = "#,#0"
 
-    for col in ws["N"]:
+    for col in ws["K"]:
         col.number_format = "#,#0"
 
         # Headers Alignment
@@ -1100,7 +1114,7 @@ def allformat3(sheet):
     try:
         final_row = ws.max_row
 
-        rule_string = f"K4:K{final_row}"
+        rule_string = f"J4:K{final_row}"
         ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
@@ -1122,20 +1136,20 @@ def visual3(worksheet):
     c1.plot_area.dTable.showOutline = True
     c1.plot_area.dTable.showKeys = True
 
-    data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
+    data = Reference(ws, min_col=5, min_row=3, max_row=ws.max_row, max_col=5)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
     c1.add_data(data, titles_from_data=True)
     c1.set_categories(cats)
     c1.shape = 4
 
-    data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
+    data = Reference(ws, min_col=7, min_row=3, max_row=ws.max_row, max_col=7)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
     c1.add_data(data, titles_from_data=True)
     c1.set_categories(cats)
     c1.shape = 4
 
-    data = Reference(ws, min_col=12, min_row=3, max_row=ws.max_row, max_col=12)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
+    data = Reference(ws, min_col=9, min_row=3, max_row=ws.max_row, max_col=9)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
     c1.add_data(data, titles_from_data=True)
     c1.set_categories(cats)
     c1.shape = 4
@@ -1143,20 +1157,20 @@ def visual3(worksheet):
     c1.x_axis.title = "Categories"
     c1.y_axis.title = "Percentage"
     c1.y_axis.majorGridlines = None
-    c1.title = ws["C4"].value
+    c1.title = ws["B4"].value
 
     openpyxl.chart.legend.Legend(legendEntry=())
 
     # Create a second chart
     c2 = LineChart()
 
-    data = Reference(ws, min_col=13, min_row=3, max_row=ws.max_row, max_col=13)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
+    data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
     c2.add_data(data, titles_from_data=True)
     c2.set_categories(cats)
 
-    data = Reference(ws, min_col=14, min_row=3, max_row=ws.max_row, max_col=14)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
+    data = Reference(ws, min_col=11, min_row=3, max_row=ws.max_row, max_col=11)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
     c2.add_data(data, titles_from_data=True)
     c2.set_categories(cats)
 
@@ -1262,8 +1276,16 @@ def preprocess(df):
     return df
 
 
+# new_df2 = pd.read_excel(r"appended_data_subsample_21_22.xlsx")
+new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_21_22.xlsx")
 
-new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Documents\GitHub\Snapshot2.0\appended_file_21_22_20221207.xlsx")
+new_df2 = new_df2.drop(
+    columns=[
+        "lead_id",
+        "t0_baseline_date",
+        "full_tour_id",
+    ]
+)
 
 mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
 
@@ -1272,8 +1294,6 @@ file_name = "profiles"
 seg_var = "source"
 bin_vars_path = "Data/Epsilon_attributes_binning_2.csv"
 # Read in file and set bins
-
-new_df2["source"] = new_df2["source"].map({1: "dataset_1", 2: "dataset_2", 3: "dataset_3"})
 
 
 profile_data = new_df2
