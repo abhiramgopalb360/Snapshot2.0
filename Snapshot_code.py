@@ -1,30 +1,22 @@
 # %%
 
-from openpyxl import load_workbook
-from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
+import string
+import warnings
+
+import numpy as np
+import openpyxl
+import pandas as pd
+from openpyxl import Workbook, load_workbook
+from openpyxl.chart import BarChart, LineChart, Reference
+from openpyxl.chart.plotarea import DataTable
+from openpyxl.formatting.rule import Rule
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.utils.dataframe import dataframe_to_rows
 from vyper.utils.tools import StatisticalTools as st
 
 # from vyper.user.explorer import DataProfiler
 from explorer import DataProfiler  # 100522 customized explorer
-from openpyxl import Workbook
-import pandas as pd
-import numpy as np
-import warnings
-import string
-import openpyxl
-
-# %%
-from openpyxl.chart.plotarea import DataTable
-from openpyxl.chart import (
-    LineChart,
-    BarChart,
-    Reference,
-)
-
-from openpyxl.formatting.rule import Rule
-from openpyxl.styles.differential import DifferentialStyle
-
-from openpyxl.utils.dataframe import dataframe_to_rows
 
 # %%
 
@@ -61,6 +53,7 @@ def addextra(epsilonpath, profile):
 
     k = Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
     # Add the Field Name
+
     def addFieldName(x):
         if x in prev_dict.keys():
             return prev_dict[x]["Field"]
@@ -69,6 +62,7 @@ def addextra(epsilonpath, profile):
     profile["Label"] = profile["Variable"].apply(lambda x: addFieldName(x))
     # print(profile[profile['Variable']=='MT_CONSISTENT_RELIGIOUS_DONORS'])
     # Add Field Description
+
     def addFieldDesc(x):
         if x in prev_dict.keys():
             return prev_dict[x]["Field Description"]
@@ -78,6 +72,7 @@ def addextra(epsilonpath, profile):
     # print(profile[profile['Variable']=='ETHNIC_GROUP_CODE3'])
     # print(profile[profile['Variable']=='MT_CONSISTENT_RELIGIOUS_DONORS'])
     # Add Value Description
+
     def addValuedescription(snowflake, value):
         if snowflake in prev_dict.keys():
             if value in prev_dict[snowflake].keys():
@@ -89,7 +84,7 @@ def addextra(epsilonpath, profile):
                     value = int(value)
                     if value in prev_dict[snowflake].keys():
                         return prev_dict[snowflake][value]["desp"]
-                except:
+                except Exception:
                     pass
 
     profile.insert(4, "Description", "")
@@ -157,7 +152,7 @@ def report2(profile, overall, savepath, continuous_path):
         max_cols = profile.shape[1]
 
         input_rows = range(4, max_rows + 4)
-        input_cols = list(string.ascii_uppercase)[1 : max_cols + 1]
+        input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
 
         y = 0
         for i in input_cols:
@@ -293,7 +288,7 @@ def report2(profile, overall, savepath, continuous_path):
         # Iterate all rows in `key_colum`
         for row, row_cells in enumerate(all_var_profiling_ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
             if key != row_cells[0].value or row == max_row:
-                if not key is None:
+                if key is not None:
                     for merge_column in merge_columns:
                         all_var_profiling_ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
                         all_var_profiling_ws.cell(row=start_row, column=merge_column).alignment = Alignment(
@@ -446,9 +441,6 @@ def CreateXLProfile_Snap(profile, overall, savepath):
     for range1 in all_var_profiling_ws.merged_cells.ranges:
         style_range(all_var_profiling_ws, str(range1), border=border)
 
-
-
-
     y = 0
     for i in input_cols:
         z = 0
@@ -477,12 +469,10 @@ def CreateXLProfile_Snap(profile, overall, savepath):
             z = z + 1
         y = y + 1
 
-    print(profile.shape[1])
     if profile.shape[1] == 10:
         allformat3(all_var_profiling_ws)
     else:
         allformat2(all_var_profiling_ws)
-
 
     ws2 = wb.create_sheet("Allcategory")
 
@@ -529,7 +519,7 @@ def Snapshot_Profile(
         continuous_bounds = {}
         for index, row in df_continuous.iterrows():
             # Read in the row as string and convert to list of floats
-            continuous_bounds[row["Snowflake Field names"]] = [float(i) for i in row["Bin"].split(sep=",")]
+            continuous_bounds[row["Attribute"]] = [float(i) for i in row["Bin"].split(sep=",")]
 
         return continuous_bounds
 
@@ -537,10 +527,12 @@ def Snapshot_Profile(
     profile_data = pd.DataFrame(profile_data)
     profile_data = preprocess(profile_data)
 
+    print(continuous_var_bounds)
+
     for col in profile_data:
         try:
             profile_data[col] = pd.to_numeric(profile_data[col])
-        except:
+        except Exception:
             continue
 
     if segments is None:
@@ -614,7 +606,6 @@ def Snapshot_Profile(
             index_order.append(str(mapping_dict[seg]) + " vs " + mapping_dict["Baseline"])
 
     profile = profile[col_order + index_order]
-    print(profile.head(n=25))
 
     # print(profile)
     for i in profile.columns:
@@ -650,7 +641,7 @@ def Snapshot_Profile(
                     PSI[row["Variable"]][row["Category"]][i + "_PSI"] = 0
                 PSI[row["Variable"]][i + "_Overall"] = 0
 
-            except:
+            except Exception:
                 PSI[row["Variable"]][row["Category"]][i + "_PSI"] = 0
 
     overall = {}
@@ -771,11 +762,11 @@ def Snapshot_Profile(
                     if "Percent" in i:
                         percent_cols.append(i)
 
-                if sum(temp_df["Category"].isin(["NA", "99", 99, "Z"])) > 0:
+                if sum(temp_df["Category"].isin(["NA", "99", 99, "Z"])):
                     # or min
                     k = (temp_df[temp_df['Category'].isin(['NA'])][percent_cols] >= .55).any(axis=1).astype(bool)
 
-                    if sum(k) > 0:
+                    if sum(k):
                         # delete that sheet
                         std = wb.get_sheet_by_name(col)
                         wb.remove_sheet(std)
@@ -814,7 +805,7 @@ def Snapshot_Profile(
 
                 counter = []
                 counter_val = 1
-                input_cols = list(string.ascii_uppercase)[1 : max_cols + 1]
+                input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
                 for index, i in enumerate(input_cols[2::]):
                     x = "2"
                     x = i + x
@@ -837,7 +828,7 @@ def Snapshot_Profile(
                     counter_val += 1
                     counter.append(x)
 
-                    # Merge cells A and B test
+                # Merge cells A and B test
                 key_column = 2
                 merge_columns = [2]
                 start_row = 4
@@ -847,7 +838,7 @@ def Snapshot_Profile(
                 # Iterate all rows in `key_colum`
                 for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
                     if key != row_cells[0].value or row == max_row:
-                        if not key is None:
+                        if key is not None:
                             for merge_column in merge_columns:
                                 ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row, end_column=merge_column)
                                 ws.cell(row=start_row, column=merge_column).alignment = Alignment(
@@ -865,75 +856,30 @@ def Snapshot_Profile(
 
                 if profile_sliced.shape[1] == 10:
                     allformat3(ws)
-
                 else:
                     allformat2(ws)
 
+            all_var_profiling_ws1 = wb.create_sheet("Index", 0)
+            # make new sheet the active sheet we are working on
+            wb.active = wb["Index"]
+            all_var_profiling_ws1 = wb.active
+
+            all_var_profiling_ws1.append(wb.sheetnames)
+
             wb.save(filesave)
 
-    print("110322")
     return profile
     # return profile
 
 
-# us_state = pd.read_csv('EPS_OPP_UNLOCK_08152022.csv')
-# unlock = pd.read_csv('unlock_append_06082022.csv')
-# # Read in the Epsilon Data Dictionary we created
-
-# unlock = unlock[unlock['MATCH_LEVEL'].isin(['IND P1','IND P2','HH'])]
-
-# unlock = unlock[unlock['SEGMENT_O']=='Application Completed']
-
-# # Pull list of Selected Attributes from Snowflake Headers
-# variable_list = us_state.columns.tolist()
-
-# # # Selected Attributes only
-# us_state1 = us_state[variable_list]
-# unlock1 = unlock[variable_list]
-
-# us_state1['category'] = 'US_Population'
-# unlock1['category'] = 'Application Completed'
-
-# new_df = pd.concat([us_state1,unlock1])
-
-# new_df2 = new_df.reset_index()
-
-# # Change the names here to edit titles headers
-# mapping_dict = {'Baseline':'US_Population','Segment_1':'Application Completed'}
-
-# # Set up variables for snapshot
-# file_name = 'Unlock_08052022_Application Completed'
-# seg_var = 'category'
-# epsilon_path = 'Data/Epsilon_Final.xlsx'
-# bin_vars_path = 'Epsilon_attributes_binning_2.csv'
-
-
-# profile_data = new_df2
-# segment_var=seg_var
-# continuous_path = bin_vars_path
-# segments = None
-# segment_names = None
-# include = None
-# variable_order = None
-# other_segment = False
-# file = file_name
-# exclude = []
-# PPT = True
-# continuous = []
-# excludeother = False
-# mapping_dict=mapping_dict
-
-
-# %%
 # Formatting functions
-
 
 def allformat2(sheet):
 
     # Selecting active sheet
     ws = sheet
 
-    #! Amateur Hour begins
+    # !Amateur Hour begins
     ws.column_dimensions["B"].width = 32
     ws.column_dimensions["C"].width = 32
     ws.column_dimensions["D"].width = 32
@@ -945,16 +891,16 @@ def allformat2(sheet):
     ws.column_dimensions["J"].width = 16
     ws.column_dimensions["K"].width = 16
 
+    for col in ws["E"]:
+        col.number_format = "0%"
+
+    for col in ws["G"]:
+        col.number_format = "0%"
+
     for col in ws["H"]:
-        col.number_format = "0%"
-
-    for col in ws["J"]:
-        col.number_format = "0%"
-
-    for col in ws["K"]:
         col.number_format = "#,#0"
 
-        # Headers Alignment
+    # Headers Alignment
     for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
         for cell in row:
             cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
@@ -973,75 +919,33 @@ def allformat2(sheet):
         for cell in row:
             cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
-    # Color scale
-    # 10/11 need to chang it to proggrssing color GradientFill
-    yellow = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")  # "00FFCC00"
+        # Color scale
+    red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
+    yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
+    green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
+    white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
 
-    red1 = PatternFill(start_color="00FFcccc", end_color="00FFcccc", fill_type="solid")  # "00FF0000"
-    red2 = PatternFill(start_color="00FF9999", end_color="00FF9999", fill_type="solid")  #
-    red3 = PatternFill(start_color="00FF7C80", end_color="00FF7C80", fill_type="solid")  #
-    red4 = PatternFill(start_color="00FF5050", end_color="00FF5050", fill_type="solid")  #
-    red5 = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")  #
-
-    green1 = PatternFill(start_color="00e2efda", end_color="00e2efda", fill_type="solid")
-    green2 = PatternFill(start_color="00c6e0b4", end_color="00c6e0b4", fill_type="solid")  # "0099CC00"
-    green3 = PatternFill(start_color="00a9d08e", end_color="00a9d08e", fill_type="solid")
-    green4 = PatternFill(start_color="0070ad47", end_color="0070ad47", fill_type="solid")
-    green5 = PatternFill(start_color="00548235", end_color="00548235", fill_type="solid")
-
-    white = PatternFill(start_color="00FFFFFF", end_color="00FFFFFF", fill_type="solid")
-
-    # GradientFill(start_color="00FF0000", end_color='990000', fill_type='solid')
-    #'005C7A00'
     dxf1 = DifferentialStyle(fill=yellow)
-    dxf2_1 = DifferentialStyle(fill=red1)
-    dxf2_2 = DifferentialStyle(fill=red2)
-    dxf2_3 = DifferentialStyle(fill=red3)
-    dxf2_4 = DifferentialStyle(fill=red4)
-    dxf2_5 = DifferentialStyle(fill=red5)
-    dxf3_1 = DifferentialStyle(fill=green1)
-    dxf3_2 = DifferentialStyle(fill=green2)
-    dxf3_3 = DifferentialStyle(fill=green3)
-    dxf3_4 = DifferentialStyle(fill=green4)
-    dxf3_5 = DifferentialStyle(fill=green5)
+    dxf2 = DifferentialStyle(fill=red)
+    dxf3 = DifferentialStyle(fill=green)
     dxf4 = DifferentialStyle(fill=white)
-    # rule1 = Rule(type='cellIs', operator='between', formula=[0.0, 95.0], dxf= dxf2)
-    rule1_1 = Rule(type="cellIs", operator="between", formula=[70.0, 87.0], dxf=dxf2_1)
-    rule1_2 = Rule(type="cellIs", operator="between", formula=[65.0, 70.0], dxf=dxf2_2)
-    rule1_3 = Rule(type="cellIs", operator="between", formula=[50.0, 65.0], dxf=dxf2_3)
-    rule1_4 = Rule(type="cellIs", operator="between", formula=[35.0, 50.0], dxf=dxf2_4)
-    rule1_5 = Rule(type="cellIs", operator="between", formula=[0.0, 35.0], dxf=dxf2_5)
 
-    rule2 = Rule(type="cellIs", operator="between", formula=[87.0, 115.0], dxf=dxf1)
+    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 85.0], dxf=dxf1)
+    rule2 = Rule(type="cellIs", operator="between", formula=[85.0, 115.0], dxf=dxf2)
+    rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
+    rule4 = Rule(type='cellIs', operator="equal", formula=[0], dxf=dxf4)
 
-    # rule3 = Rule(type='cellIs', operator='between', formula=[115.0, 1000000.0], dxf= dxf3_1)
-    rule3_1 = Rule(type="cellIs", operator="between", formula=[115.0, 150.0], dxf=dxf3_1)
-    rule3_2 = Rule(type="cellIs", operator="between", formula=[150.0, 200.0], dxf=dxf3_2)
-    rule3_3 = Rule(type="cellIs", operator="between", formula=[200.0, 250.0], dxf=dxf3_3)
-    rule3_4 = Rule(type="cellIs", operator="between", formula=[250.0, 300.0], dxf=dxf3_4)
-    rule3_5 = Rule(type="cellIs", operator="between", formula=[300.0, 100000.0], dxf=dxf3_5)
-
-    # rule4 = Rule(type='cellIs', operator='', formula=None, dxf= dxf4)
     try:
         final_row = ws.max_row
-
-        rule_string = f"K4:K{final_row}"
-        ws.conditional_formatting.add(rule_string, rule1_1)
-        ws.conditional_formatting.add(rule_string, rule1_2)
-        ws.conditional_formatting.add(rule_string, rule1_3)
-        ws.conditional_formatting.add(rule_string, rule1_4)
-        ws.conditional_formatting.add(rule_string, rule1_5)
-
+        rule_string = f"H4:H{final_row}"
+        ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
+        ws.conditional_formatting.add(rule_string, rule3)
+        ws.conditional_formatting.add(rule_string, rule4)
 
-        ws.conditional_formatting.add(rule_string, rule3_1)
-        ws.conditional_formatting.add(rule_string, rule3_2)
-        ws.conditional_formatting.add(rule_string, rule3_3)
-        ws.conditional_formatting.add(rule_string, rule3_4)
-        ws.conditional_formatting.add(rule_string, rule3_5)
-    except:
+    except Exception:
         # so you found this code huh.. this is the pinacle of optimisation btw
-        True == True
+        pass
 
 
 def allformat3(sheet):
@@ -1049,7 +953,7 @@ def allformat3(sheet):
     # Selecting active sheet
     ws = sheet
 
-    #! Amateur Hour begins
+    # !Amateur Hour begins
     ws.column_dimensions["B"].width = 32
     ws.column_dimensions["C"].width = 32
     ws.column_dimensions["D"].width = 32
@@ -1076,7 +980,7 @@ def allformat3(sheet):
     for col in ws["K"]:
         col.number_format = "#,#0"
 
-        # Headers Alignment
+    # Headers Alignment
     for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
         for cell in row:
             cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
@@ -1099,17 +1003,17 @@ def allformat3(sheet):
     red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
     yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
     green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
-    white = PatternFill(start_color="00FFFFFF", end_color="00FFFFFF", fill_type="solid")
+    white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
 
     dxf1 = DifferentialStyle(fill=yellow)
     dxf2 = DifferentialStyle(fill=red)
     dxf3 = DifferentialStyle(fill=green)
-    # dxf4 = DifferentialStyle(fill=white)
+    dxf4 = DifferentialStyle(fill=white)
 
-    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 95.0], dxf=dxf1)
-    rule2 = Rule(type="cellIs", operator="between", formula=[95.0, 115.0], dxf=dxf2)
+    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 85.0], dxf=dxf1)
+    rule2 = Rule(type="cellIs", operator="between", formula=[85.0, 115.0], dxf=dxf2)
     rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
-    # rule4 = Rule(type='cellIs', operator='', formula=None, dxf= dxf4)
+    rule4 = Rule(type='cellIs', operator="equal", formula=[0], dxf=dxf4)
 
     try:
         final_row = ws.max_row
@@ -1118,9 +1022,62 @@ def allformat3(sheet):
         ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
-    except:
+    except Exception:
         # so you found this code huh.. this is the pinacle of optimisation btw
-        True == True
+        pass
+
+
+def visual2(worksheet):
+    # change size 111222
+
+    ws = worksheet
+
+    c1 = BarChart()
+    c1.height = 19.05  # default is 7.5
+    c1.width = 33.85  # default is 15
+    c1.plot_area.dTable = DataTable()
+    c1.plot_area.dTable.showHorzBorder = True
+    c1.plot_area.dTable.showVertBorder = True
+    c1.plot_area.dTable.showOutline = True
+    c1.plot_area.dTable.showKeys = True
+
+    data = Reference(ws, min_col=5, min_row=3, max_row=ws.max_row, max_col=5)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+    c1.add_data(data, titles_from_data=True)
+    c1.set_categories(cats)
+    c1.shape = 4
+
+    data = Reference(ws, min_col=7, min_row=3, max_row=ws.max_row, max_col=7)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+    c1.add_data(data, titles_from_data=True)
+    c1.set_categories(cats)
+    c1.shape = 4
+
+    c1.x_axis.title = "Categories"
+    c1.y_axis.title = "Percentage"
+    c1.y_axis.majorGridlines = None
+    c1.title = ws["B4"].value
+
+    openpyxl.chart.legend.Legend(legendEntry=())
+
+    # Create a second chart
+    c2 = LineChart()
+
+    data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
+    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+    c2.add_data(data, titles_from_data=True)
+    c2.set_categories(cats)
+
+    c2.y_axis.axId = 200
+    c2.y_axis.title = "Index"
+
+    # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
+    c2.y_axis.crosses = "max"
+    c1 += c2
+
+    c1.legend = None
+
+    ws.add_chart(c1, "D15")
 
 
 def visual3(worksheet):
@@ -1186,64 +1143,6 @@ def visual3(worksheet):
     ws.add_chart(c1, "D15")
 
 
-def visual2(worksheet):
-    # change size 111222
-
-    ws = worksheet
-
-    c1 = BarChart()
-    c1.height = 19.05  # default is 7.5
-    c1.width = 33.85  # default is 15
-    c1.plot_area.dTable = DataTable()
-    c1.plot_area.dTable.showHorzBorder = True
-    c1.plot_area.dTable.showVertBorder = True
-    c1.plot_area.dTable.showOutline = True
-    c1.plot_area.dTable.showKeys = True
-
-    data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    c1.x_axis.title = "Categories"
-    c1.y_axis.title = "Percentage"
-    c1.y_axis.majorGridlines = None
-    c1.title = ws["C4"].value
-
-    openpyxl.chart.legend.Legend(legendEntry=())
-
-    # Create a second chart
-    c2 = LineChart()
-
-    data = Reference(ws, min_col=11, min_row=3, max_row=ws.max_row, max_col=11)
-    cats = Reference(ws, min_col=6, min_row=4, max_row=ws.max_row, max_col=6)
-    c2.add_data(data, titles_from_data=True)
-    c2.set_categories(cats)
-
-    c2.y_axis.axId = 200
-    c2.y_axis.title = "Index"
-
-    # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
-    c2.y_axis.crosses = "max"
-    c1 += c2
-
-    c1.legend = None
-
-    ws.add_chart(c1, "D15")
-
-
-# Merge Test
-# def merge(path):
-#     return 0
-
-
 def merge(path):
     # Loading work book
     wb = load_workbook(path)
@@ -1260,7 +1159,7 @@ def merge(path):
     # Iterate all rows in `key_colum`
     for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
         if key != row_cells[0].value or row == max_row:
-            if not key is None:
+            if key is not None:
                 for merge_column in merge_columns:
                     ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
                     ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
@@ -1276,8 +1175,10 @@ def preprocess(df):
     return df
 
 
-# new_df2 = pd.read_excel(r"appended_data_subsample_21_22.xlsx")
-new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_21_22.xlsx")
+#
+#
+#
+new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221213.xlsx")
 
 new_df2 = new_df2.drop(
     columns=[
@@ -1287,14 +1188,14 @@ new_df2 = new_df2.drop(
     ]
 )
 
-mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
+mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_4"}
+# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
 
 # Set up variables for snapshot
-file_name = "profiles"
+file_name = "profiles_1_2_4"
 seg_var = "source"
-bin_vars_path = "Data/Epsilon_attributes_binning_2.csv"
+bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
 # Read in file and set bins
-
 
 profile_data = new_df2
 segment_var = seg_var
@@ -1306,7 +1207,7 @@ variable_order = None
 other_segment = False
 file = file_name
 exclude = []
-PPT = False
+PPT = True
 continuous = []
 excludeother = False
 mapping_dict = mapping_dict
