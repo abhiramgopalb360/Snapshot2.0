@@ -1,5 +1,3 @@
-# %%
-
 import string
 import warnings
 
@@ -18,10 +16,8 @@ from vyper.utils.tools import StatisticalTools as st
 # from vyper.user.explorer import DataProfiler
 from explorer import DataProfiler  # 100522 customized explorer
 
-# %%
 
 # Snapshot functions
-
 
 def addextra(epsilonpath, profile):
     # Read in the data and prepare the dataframe
@@ -766,19 +762,20 @@ def Snapshot_Profile(
 
                     if sum(k):
                         # delete that sheet
-                        std = wb.get_sheet_by_name(col)
-                        wb.remove_sheet(std)
+                        std = wb[col]
+                        wb.remove(std)
                         print(f"{std} removed")
                         continue
 
-                temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
+                # temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
+                temp_df.loc[:, "FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
                 temp_df = temp_df[temp_df["FLAG"]]
                 temp_df = temp_df[~temp_df["Category"].isin(["NA", "99", 99, "Z"])]
 
                 if len(temp_df) == 0:
                     # delete that sheet
-                    std = wb.get_sheet_by_name(col)
-                    wb.remove_sheet(std)
+                    std = wb[col]
+                    wb.remove(std)
                     print(f"{std} removed")
                     continue
                 # To code if temp_df contains NA in
@@ -857,6 +854,7 @@ def Snapshot_Profile(
                 else:
                     allformat2(ws)
 
+            # TODO: transpose data in sheet
             all_var_profiling_ws1 = wb.create_sheet("Index", 0)
             # make new sheet the active sheet we are working on
             wb.active = wb["Index"]
@@ -939,7 +937,7 @@ def allformat2(sheet):
         ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
-        ws.conditional_formatting.add(rule_string, rule4)
+        # ws.conditional_formatting.add(rule_string, rule4)
 
     except Exception:
         # so you found this code huh.. this is the pinacle of optimisation btw
@@ -1175,39 +1173,39 @@ def preprocess(df):
     return df
 
 
-#
-#
-#
-new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221213.xlsx")
+# #
+# #
+# #
+# new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221213.xlsx")
 
-new_df2 = new_df2.drop(
-    columns=[
-        "lead_id",
-        "t0_baseline_date",
-        "full_tour_id",
-    ]
-)
+# new_df2 = new_df2.drop(
+#     columns=[
+#         "lead_id",
+#         "t0_baseline_date",
+#         "full_tour_id",
+#     ]
+# )
 
-mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
-# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
+# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
+# # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
 
-# Set up variables for snapshot
-file_name = "profiles_temp"
-seg_var = "source"
-bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
-# Read in file and set bins
+# # Set up variables for snapshot
+# file_name = "profiles_temp"
+# seg_var = "source"
+# bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
+# # Read in file and set bins
 
-profile_data = new_df2
-segment_var = seg_var
-continuous_path = bin_vars_path
-segments = None
-segment_names = None
-include = None
-variable_order = None
-other_segment = False
-file = file_name
-exclude = []
-PPT = True
-continuous = []
-excludeother = False
-mapping_dict = mapping_dict
+# profile_data = new_df2
+# segment_var = seg_var
+# continuous_path = bin_vars_path
+# segments = None
+# segment_names = None
+# include = None
+# variable_order = None
+# other_segment = False
+# file = file_name
+# exclude = []
+# PPT = True
+# continuous = []
+# excludeother = False
+# mapping_dict = mapping_dict

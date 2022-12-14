@@ -27,6 +27,8 @@ VACATION_PROPERTY_OWNERSHIP_PROPENSITY_3411,Acxiom,VACATION_PROPERTY_OWNERSHIP_P
 vacation_shopper_rank,Acxiom,vacation_shopper_rank,1,"0,25,50,75,100"
 env_vacation_cost,Envision,env_vacation_cost,1,"0,30000,75000,150000,1000000000"
 env_vacation_days,Envision,env_vacation_days,1,"0,5,10,20,366"
+env_netcost,Envision,env_netcost,1,"0,30000,75000,150000,1000000000"
+env_annual_cost,Envision,env_annual_cost,1,"0,2000,4000,6000,1000000000"
 pref_relax_v_adventure,Envision,pref_relax_v_adventure,1,"0,25,50,75,100"
 pref_nature_lover_v_thrill_seeker,Envision,pref_nature_lover_v_thrill_seeker,1,"0,25,50,75,100"
 pref_freestyle_v_agenda,Envision,pref_freestyle_v_agenda,1,"0,25,50,75,100"
