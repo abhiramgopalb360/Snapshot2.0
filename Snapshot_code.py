@@ -502,6 +502,7 @@ def Snapshot_Profile(
     file="Profile",
     exclude="",
     PPT=True,
+    plot_index=True,
     continuous=[],
     excludeother=False,
     mapping_dict={},
@@ -526,8 +527,6 @@ def Snapshot_Profile(
     continuous_var_bounds = continuous_bins(continuous_path)
     profile_data = pd.DataFrame(profile_data)
     profile_data = preprocess(profile_data)
-
-    print(continuous_var_bounds)
 
     for col in profile_data:
         try:
@@ -579,7 +578,7 @@ def Snapshot_Profile(
             continuous_var_cuts[variable] = pd.cut(profile_data[variable], bins=cut_bins)
 
         else:
-            continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=10, squash_extremes=False)
+            continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=6, squash_extremes=False)
 
     col_order = []
     index_order = []
@@ -587,7 +586,7 @@ def Snapshot_Profile(
     # Change the US population as BASELINE
     mapping_dict = mapping_dict
     for seg in np.sort(list(mapping_dict.keys())):
-        profile_1 = DataProfiler(profile_data[profile_data[segment_var] == mapping_dict[seg]]).create_profile(number_of_bins=10, cts_cuts=continuous_var_cuts)
+        profile_1 = DataProfiler(profile_data[profile_data[segment_var] == mapping_dict[seg]]).create_profile(number_of_bins=6, cts_cuts=continuous_var_cuts)
 
         if seg == "Baseline":
             profile = profile_1
@@ -616,7 +615,6 @@ def Snapshot_Profile(
             profile[i][profile[i].isna()] = 0
 
     # Defining PSI
-
     PSI = {}
     uscol = ""
     NumPSI = []
@@ -850,9 +848,9 @@ def Snapshot_Profile(
                         row += 1
 
                 if profile_sliced.shape[1] == 10:
-                    visual3(ws)
+                    visual3(ws, plot_index)
                 else:
-                    visual2(ws)
+                    visual2(ws, plot_index)
 
                 if profile_sliced.shape[1] == 10:
                     allformat3(ws)
@@ -1027,7 +1025,7 @@ def allformat3(sheet):
         pass
 
 
-def visual2(worksheet):
+def visual2(worksheet, plot_index):
     # change size 111222
 
     ws = worksheet
@@ -1061,26 +1059,27 @@ def visual2(worksheet):
     openpyxl.chart.legend.Legend(legendEntry=())
 
     # Create a second chart
-    c2 = LineChart()
+    if plot_index:
+        c2 = LineChart()
 
-    data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c2.add_data(data, titles_from_data=True)
-    c2.set_categories(cats)
+        data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
+        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+        c2.add_data(data, titles_from_data=True)
+        c2.set_categories(cats)
 
-    c2.y_axis.axId = 200
-    c2.y_axis.title = "Index"
+        c2.y_axis.axId = 200
+        c2.y_axis.title = "Index"
 
-    # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
-    c2.y_axis.crosses = "max"
-    c1 += c2
+        # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
+        c2.y_axis.crosses = "max"
+        c1 += c2
 
     c1.legend = None
 
     ws.add_chart(c1, "D15")
 
 
-def visual3(worksheet):
+def visual3(worksheet, plot_index):
 
     ws = worksheet
 
@@ -1119,24 +1118,25 @@ def visual3(worksheet):
     openpyxl.chart.legend.Legend(legendEntry=())
 
     # Create a second chart
-    c2 = LineChart()
+    if plot_index:
+        c2 = LineChart()
 
-    data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c2.add_data(data, titles_from_data=True)
-    c2.set_categories(cats)
+        data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
+        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+        c2.add_data(data, titles_from_data=True)
+        c2.set_categories(cats)
 
-    data = Reference(ws, min_col=11, min_row=3, max_row=ws.max_row, max_col=11)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c2.add_data(data, titles_from_data=True)
-    c2.set_categories(cats)
+        data = Reference(ws, min_col=11, min_row=3, max_row=ws.max_row, max_col=11)
+        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+        c2.add_data(data, titles_from_data=True)
+        c2.set_categories(cats)
 
-    c2.y_axis.axId = 200
-    c2.y_axis.title = "Index"
+        c2.y_axis.axId = 200
+        c2.y_axis.title = "Index"
 
-    # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
-    c2.y_axis.crosses = "max"
-    c1 += c2
+        # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
+        c2.y_axis.crosses = "max"
+        c1 += c2
 
     c1.legend = None
 
@@ -1188,11 +1188,11 @@ new_df2 = new_df2.drop(
     ]
 )
 
-mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_4"}
+mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
 # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
 
 # Set up variables for snapshot
-file_name = "profiles_1_2_4"
+file_name = "profiles_temp"
 seg_var = "source"
 bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
 # Read in file and set bins
