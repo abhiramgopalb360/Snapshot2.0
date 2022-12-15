@@ -1,3 +1,4 @@
+import os
 import string
 import warnings
 
@@ -494,6 +495,7 @@ def Snapshot_Profile(
     include,
     continuous_path,
     variable_order,
+    nbins=6,
     other_segment=False,
     file="Profile",
     exclude="",
@@ -572,9 +574,8 @@ def Snapshot_Profile(
         elif variable in continuous_var_bounds:
             cut_bins = continuous_var_bounds[variable]
             continuous_var_cuts[variable] = pd.cut(profile_data[variable], bins=cut_bins)
-
         else:
-            continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=6, squash_extremes=False)
+            continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=nbins, squash_extremes=False)
 
     col_order = []
     index_order = []
@@ -582,7 +583,7 @@ def Snapshot_Profile(
     # Change the US population as BASELINE
     mapping_dict = mapping_dict
     for seg in np.sort(list(mapping_dict.keys())):
-        profile_1 = DataProfiler(profile_data[profile_data[segment_var] == mapping_dict[seg]]).create_profile(number_of_bins=6, cts_cuts=continuous_var_cuts)
+        profile_1 = DataProfiler(profile_data[profile_data[segment_var] == mapping_dict[seg]]).create_profile(number_of_bins=nbins, cts_cuts=continuous_var_cuts)
 
         if seg == "Baseline":
             profile = profile_1
@@ -654,13 +655,10 @@ def Snapshot_Profile(
                 overall[variable][scores] += PSI[variable][label][scores]
 
     # Variable overall contains all the overall PSI Scores
-    #
 
     for col in profile.columns[profile.columns.str.contains("Percent")]:
         profile[col] = profile[col] / 100
     if file:
-        import os
-
         # Make Profile #
         filesave = file + ".xlsx"
         filesave2 = file + "Category" + ".xlsx"
