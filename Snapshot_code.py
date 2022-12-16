@@ -848,7 +848,7 @@ def Snapshot_Profile(
                     if row == max_row:
                         row += 1
 
-                visual(ws, plot_index=True, groups=len(mapping_dict))
+                visual(ws, plot_index=plot_index, groups=len(mapping_dict))
 
                 allformat(ws, groups=len(mapping_dict))
 
@@ -1163,28 +1163,28 @@ new_df2 = new_df2.drop(
     ]
 )
 
-mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
-# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
+# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
+# # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
 
-# Set up variables for snapshot
-file_name = "profiles_temp"
-seg_var = "source"
-bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
-# Read in file and set bins
+# # Set up variables for snapshot
+# file_name = "profiles_temp"
+# seg_var = "source"
+# bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
+# # Read in file and set bins
 
-profile_data = new_df2
-segment_var = seg_var
-continuous_path = bin_vars_path
-segments = None
-segment_names = None
-include = None
-variable_order = None
-other_segment = False
-file = file_name
-plot_index = False
-exclude = []
-PPT = True
-continuous = []
-nbins = 5
-excludeother = False
-mapping_dict = mapping_dict
+# profile_data = new_df2
+# segment_var = seg_var
+# continuous_path = bin_vars_path
+# segments = None
+# segment_names = None
+# include = None
+# variable_order = None
+# other_segment = False
+# file = file_name
+# plot_index = False
+# exclude = []
+# PPT = True
+# continuous = []
+# nbins = 5
+# excludeother = False
+# mapping_dict = mapping_dict
