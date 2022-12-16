@@ -296,10 +296,13 @@ def report2(profile, overall, savepath, continuous_path):
             if row == max_row:
                 row += 1
 
-        if profile.shape[1] > 10:
-            allformat3(all_var_profiling_ws)
+        # TODO: clean up
+        if profile.shape[1] == 10:
+            allformat(all_var_profiling_ws, groups=3)
+        elif profile.shape[1] == 13:
+            allformat(all_var_profiling_ws, groups=4)
         else:
-            allformat2(all_var_profiling_ws)
+            allformat(all_var_profiling_ws, groups=2)
 
     ws2 = wb.create_sheet("Allcategory", 0)
 
@@ -466,10 +469,13 @@ def CreateXLProfile_Snap(profile, overall, savepath):
             z = z + 1
         y = y + 1
 
+    # TODO: clean up
     if profile.shape[1] == 10:
-        allformat3(all_var_profiling_ws)
+        allformat(all_var_profiling_ws, groups=3)
+    elif profile.shape[1] == 13:
+        allformat(all_var_profiling_ws, groups=4)
     else:
-        allformat2(all_var_profiling_ws)
+        allformat(all_var_profiling_ws, groups=2)
 
     ws2 = wb.create_sheet("Allcategory")
 
@@ -842,15 +848,9 @@ def Snapshot_Profile(
                     if row == max_row:
                         row += 1
 
-                if profile_sliced.shape[1] == 10:
-                    visual3(ws, plot_index)
-                else:
-                    visual2(ws, plot_index)
+                visual(ws, plot_index=True, groups=len(mapping_dict))
 
-                if profile_sliced.shape[1] == 10:
-                    allformat3(ws)
-                else:
-                    allformat2(ws)
+                allformat(ws, groups=len(mapping_dict))
 
             # TODO: transpose data in sheet
             all_var_profiling_ws1 = wb.create_sheet("Index", 0)
@@ -868,6 +868,161 @@ def Snapshot_Profile(
 
 # Formatting functions
 
+
+def allformat(sheet, groups):
+
+    # Selecting active sheet
+    ws = sheet
+
+    # !Amateur Hour Is Over
+
+    char = "C"
+    for _ in range(groups):
+        char = chr(ord(char) + 2)
+        for col in ws[char]:
+            col.number_format = "0%"
+
+    start = chr(ord(char) + 1)
+    for _ in range(1, groups):
+        char = chr(ord(char) + 1)
+        for col in ws[char]:
+            col.number_format = "#,#0"
+
+    ws.column_dimensions["B"].width = 32
+    ws.column_dimensions["C"].width = 32
+    for c in range(ord("D"), ord(char) + 1):
+        ws.column_dimensions[chr(c)].width = 16
+
+    # TODO: adjust alignments
+    # Headers Alignment
+    for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+
+    # Columns B, C and D
+    for row in ws.iter_rows(min_col=2, max_col=4):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+    # Columns E an F
+    for row in ws.iter_rows(min_col=5, max_col=6):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+
+    # Columns G, H, I, J and K
+    for row in ws.iter_rows(min_col=7, max_col=14):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+
+
+        # Color scale
+    red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
+    yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
+    green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
+    white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
+
+    dxf1 = DifferentialStyle(fill=yellow)
+    dxf2 = DifferentialStyle(fill=red)
+    dxf3 = DifferentialStyle(fill=green)
+    dxf4 = DifferentialStyle(fill=white)
+
+    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 85.0], dxf=dxf1)
+    rule2 = Rule(type="cellIs", operator="between", formula=[85.0, 115.0], dxf=dxf2)
+    rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
+    rule4 = Rule(type='cellIs', operator="equal", formula=[0], dxf=dxf4)
+
+    final_row = ws.max_row
+
+    rule_string = f"{start}4:{char}{final_row}"
+    ws.conditional_formatting.add(rule_string, rule1)
+    ws.conditional_formatting.add(rule_string, rule2)
+    ws.conditional_formatting.add(rule_string, rule3)
+
+
+def visual(worksheet, plot_index, groups):
+
+    ws = worksheet
+
+    c1 = BarChart()
+    c1.height = 19.05  # default is 7.5
+    c1.width = 33.85  # default is 15
+    c1.plot_area.dTable = DataTable()
+    c1.plot_area.dTable.showHorzBorder = True
+    c1.plot_area.dTable.showVertBorder = True
+    c1.plot_area.dTable.showOutline = True
+    c1.plot_area.dTable.showKeys = True
+
+    for seg in range(groups):
+        x1 = seg * 2 + 5
+        data = Reference(ws, min_col=x1, min_row=3, max_row=ws.max_row, max_col=x1)
+        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+        c1.add_data(data, titles_from_data=True)
+        c1.set_categories(cats)
+        c1.shape = 4
+
+    c1.x_axis.title = "Categories"
+    c1.y_axis.title = "Percentage"
+    c1.y_axis.majorGridlines = None
+    c1.title = ws["B4"].value
+
+    openpyxl.chart.legend.Legend(legendEntry=())
+
+    # Create a second chart
+    if plot_index:
+        c2 = LineChart()
+
+        for seg in range(1, groups):
+            x2 = seg + x1
+
+            data = Reference(ws, min_col=x2, min_row=3, max_row=ws.max_row, max_col=x2)
+            cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+            c2.add_data(data, titles_from_data=True)
+            c2.set_categories(cats)
+
+        c2.y_axis.axId = 200
+        c2.y_axis.title = "Index"
+
+        # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
+        c2.y_axis.crosses = "max"
+        c1 += c2
+
+    c1.legend = None
+
+    ws.add_chart(c1, "D15")
+
+
+def merge(path):
+    # Loading work book
+    wb = load_workbook(path)
+    # Selecting active sheet
+    ws = wb.active
+
+    # Merge cells A and B test
+    key_column = 2
+    merge_columns = [2]
+    start_row = 4
+    max_row = ws.max_row
+    key = None
+
+    # Iterate all rows in `key_colum`
+    for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
+        if key != row_cells[0].value or row == max_row:
+            if key is not None:
+                for merge_column in merge_columns:
+                    ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
+                    ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
+                start_row = row
+            key = row_cells[0].value
+        if row == max_row:
+            row += 1
+
+    wb.save(path)
+
+
+def preprocess(df):
+    return df
+
+
+# legacy code
 def allformat2(sheet):
 
     # Selecting active sheet
@@ -942,85 +1097,6 @@ def allformat2(sheet):
         pass
 
 
-def allformat3(sheet):
-
-    # Selecting active sheet
-    ws = sheet
-
-    # !Amateur Hour begins
-    ws.column_dimensions["B"].width = 32
-    ws.column_dimensions["C"].width = 32
-    ws.column_dimensions["D"].width = 32
-    ws.column_dimensions["E"].width = 16
-    ws.column_dimensions["F"].width = 16
-    ws.column_dimensions["G"].width = 16
-    ws.column_dimensions["H"].width = 16
-    ws.column_dimensions["I"].width = 16
-    ws.column_dimensions["J"].width = 16
-    ws.column_dimensions["K"].width = 16
-
-    for col in ws["E"]:
-        col.number_format = "0%"
-
-    for col in ws["G"]:
-        col.number_format = "0%"
-
-    for col in ws["I"]:
-        col.number_format = "0%"
-
-    for col in ws["J"]:
-        col.number_format = "#,#0"
-
-    for col in ws["K"]:
-        col.number_format = "#,#0"
-
-    # Headers Alignment
-    for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-    # Columns B, C and D
-    for row in ws.iter_rows(min_col=2, max_col=4):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-    # Columns E an F
-    for row in ws.iter_rows(min_col=5, max_col=6):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-    # Columns G, H, I, J and K
-    for row in ws.iter_rows(min_col=7, max_col=14):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-        # Color scale
-    red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
-    yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
-    green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
-    white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
-
-    dxf1 = DifferentialStyle(fill=yellow)
-    dxf2 = DifferentialStyle(fill=red)
-    dxf3 = DifferentialStyle(fill=green)
-    dxf4 = DifferentialStyle(fill=white)
-
-    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 85.0], dxf=dxf1)
-    rule2 = Rule(type="cellIs", operator="between", formula=[85.0, 115.0], dxf=dxf2)
-    rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
-    rule4 = Rule(type='cellIs', operator="equal", formula=[0], dxf=dxf4)
-
-    try:
-        final_row = ws.max_row
-
-        rule_string = f"J4:K{final_row}"
-        ws.conditional_formatting.add(rule_string, rule1)
-        ws.conditional_formatting.add(rule_string, rule2)
-        ws.conditional_formatting.add(rule_string, rule3)
-    except Exception:
-        # so you found this code huh.. this is the pinacle of optimisation btw
-        pass
-
-
 def visual2(worksheet, plot_index):
     # change size 111222
 
@@ -1074,136 +1150,41 @@ def visual2(worksheet, plot_index):
 
     ws.add_chart(c1, "D15")
 
+#
+#
+#
+new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221215.xlsx")
 
-def visual3(worksheet, plot_index):
+new_df2 = new_df2.drop(
+    columns=[
+        "lead_id",
+        "t0_baseline_date",
+        "full_tour_id",
+    ]
+)
 
-    ws = worksheet
+mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
+# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
 
-    c1 = BarChart()
-    c1.height = 19.05  # default is 7.5
-    c1.width = 33.85  # default is 15
-    c1.plot_area.dTable = DataTable()
-    c1.plot_area.dTable.showHorzBorder = True
-    c1.plot_area.dTable.showVertBorder = True
-    c1.plot_area.dTable.showOutline = True
-    c1.plot_area.dTable.showKeys = True
+# Set up variables for snapshot
+file_name = "profiles_temp"
+seg_var = "source"
+bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
+# Read in file and set bins
 
-    data = Reference(ws, min_col=5, min_row=3, max_row=ws.max_row, max_col=5)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    data = Reference(ws, min_col=7, min_row=3, max_row=ws.max_row, max_col=7)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    data = Reference(ws, min_col=9, min_row=3, max_row=ws.max_row, max_col=9)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    c1.x_axis.title = "Categories"
-    c1.y_axis.title = "Percentage"
-    c1.y_axis.majorGridlines = None
-    c1.title = ws["B4"].value
-
-    openpyxl.chart.legend.Legend(legendEntry=())
-
-    # Create a second chart
-    if plot_index:
-        c2 = LineChart()
-
-        data = Reference(ws, min_col=10, min_row=3, max_row=ws.max_row, max_col=10)
-        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-        c2.add_data(data, titles_from_data=True)
-        c2.set_categories(cats)
-
-        data = Reference(ws, min_col=11, min_row=3, max_row=ws.max_row, max_col=11)
-        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-        c2.add_data(data, titles_from_data=True)
-        c2.set_categories(cats)
-
-        c2.y_axis.axId = 200
-        c2.y_axis.title = "Index"
-
-        # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
-        c2.y_axis.crosses = "max"
-        c1 += c2
-
-    c1.legend = None
-
-    ws.add_chart(c1, "D15")
-
-
-def merge(path):
-    # Loading work book
-    wb = load_workbook(path)
-    # Selecting active sheet
-    ws = wb.active
-
-    # Merge cells A and B test
-    key_column = 2
-    merge_columns = [2]
-    start_row = 4
-    max_row = ws.max_row
-    key = None
-
-    # Iterate all rows in `key_colum`
-    for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
-        if key != row_cells[0].value or row == max_row:
-            if key is not None:
-                for merge_column in merge_columns:
-                    ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
-                    ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
-                start_row = row
-            key = row_cells[0].value
-        if row == max_row:
-            row += 1
-
-    wb.save(path)
-
-
-def preprocess(df):
-    return df
-
-
-# #
-# #
-# #
-# new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221213.xlsx")
-
-# new_df2 = new_df2.drop(
-#     columns=[
-#         "lead_id",
-#         "t0_baseline_date",
-#         "full_tour_id",
-#     ]
-# )
-
-# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3"}
-# # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
-
-# # Set up variables for snapshot
-# file_name = "profiles_temp"
-# seg_var = "source"
-# bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
-# # Read in file and set bins
-
-# profile_data = new_df2
-# segment_var = seg_var
-# continuous_path = bin_vars_path
-# segments = None
-# segment_names = None
-# include = None
-# variable_order = None
-# other_segment = False
-# file = file_name
-# exclude = []
-# PPT = True
-# continuous = []
-# excludeother = False
-# mapping_dict = mapping_dict
+profile_data = new_df2
+segment_var = seg_var
+continuous_path = bin_vars_path
+segments = None
+segment_names = None
+include = None
+variable_order = None
+other_segment = False
+file = file_name
+plot_index = False
+exclude = []
+PPT = True
+continuous = []
+nbins = 5
+excludeother = False
+mapping_dict = mapping_dict
