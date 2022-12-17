@@ -3,10 +3,10 @@ import string
 import warnings
 
 import numpy as np
-import openpyxl
 import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.chart import BarChart, LineChart, Reference
+from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.plotarea import DataTable
 from openpyxl.formatting.rule import Rule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -19,6 +19,7 @@ from explorer import DataProfiler  # 100522 customized explorer
 
 
 # Snapshot functions
+
 
 def addextra(epsilonpath, profile):
     # Read in the data and prepare the dataframe
@@ -492,7 +493,6 @@ def CreateXLProfile_Snap(profile, overall, savepath):
         merge(savepath)
 
 
-# %%
 def Snapshot_Profile(
     profile_data,
     segment_var,
@@ -525,7 +525,6 @@ def Snapshot_Profile(
         for index, row in df_continuous.iterrows():
             # Read in the row as string and convert to list of floats
             continuous_bounds[row["Attribute"]] = [float(i) for i in row["Bin"].split(sep=",")]
-
         return continuous_bounds
 
     continuous_var_bounds = continuous_bins(continuous_path)
@@ -542,12 +541,15 @@ def Snapshot_Profile(
         segments = pd.unique(profile_data[segment_var])
         other_segment = False
         segment_names = str(segments)
+
     if not (isinstance(other_segment, bool)):
         raise ValueError("other must be True or False.")
+
     if segment_names is None:
         segment_names = str(segments)
         if other_segment:
             segment_names = [segment_names, "other"]
+
     if len(segments) + other_segment != len(segment_names):
         if len(segments) == len(segment_names):
             segment_names = [segment_names, "other"]
@@ -562,11 +564,12 @@ def Snapshot_Profile(
     for col in profile_data.columns:
         varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col])], columns=[col])], axis=1)
     varclass[varclass.columns in continuous] = "continuous"
-    varclass
+
     if not (include is None):
         exclude = varclass.columns[varclass.columns not in include]
     # Variables to exclude
     varclass[varclass.columns in exclude] = "exclude"
+
     if excludeother:
         varclass[varclass.columns == "Categorical+other"] = "exclude"
     continuous_var_cuts = dict()
@@ -666,15 +669,18 @@ def Snapshot_Profile(
         profile[col] = profile[col] / 100
     if file:
         # Make Profile #
-        filesave = file + ".xlsx"
-        filesave2 = file + "Category" + ".xlsx"
-        if os.path.exists(filesave):
-            os.remove(filesave)
-        report2(profile, overall=overall, savepath=filesave2, continuous_path=continuous_path)
+        try:
+            filesave = file + ".xlsx"
+            filesave2 = file + "Category" + ".xlsx"
+            if os.path.exists(filesave):
+                os.remove(filesave)
+            report2(profile, overall=overall, savepath=filesave2, continuous_path=continuous_path)
+        finally:
+            print("Category skipped")    # TODO: Find out why report2 breaks sometimes
+
         CreateXLProfile_Snap(profile, overall, savepath=filesave)
 
         if PPT:
-
             filesave = file + "PPT" + ".xlsx"
             lcn = str(profile.columns[-1])
             profile_sliced = profile[profile[lcn] > 0]
@@ -762,7 +768,7 @@ def Snapshot_Profile(
 
                 if sum(temp_df["Category"].isin(["NA", "99", 99, "Z"])):
                     # or min
-                    k = (temp_df[temp_df['Category'].isin(['NA'])][percent_cols] >= .55).any(axis=1).astype(bool)
+                    k = (temp_df[temp_df["Category"].isin(["NA"])][percent_cols] >= 0.55).any(axis=1).astype(bool)
 
                     if sum(k):
                         # delete that sheet
@@ -805,6 +811,7 @@ def Snapshot_Profile(
                 counter = []
                 counter_val = 1
                 input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
+
                 for index, i in enumerate(input_cols[2::]):
                     x = "2"
                     x = i + x
@@ -848,16 +855,15 @@ def Snapshot_Profile(
                     if row == max_row:
                         row += 1
 
-                visual(ws, plot_index=plot_index, groups=len(mapping_dict))
+                visual(ws, plot_index=plot_index, groups=len(mapping_dict), chart_style=2, show_axes=False)
 
                 allformat(ws, groups=len(mapping_dict))
 
-            # TODO: transpose data in sheet
+            # TODO: format Index page
             all_var_profiling_ws1 = wb.create_sheet("Index", 0)
             # make new sheet the active sheet we are working on
             wb.active = wb["Index"]
             all_var_profiling_ws1 = wb.active
-
             all_var_profiling_ws1.append(wb.sheetnames)
 
             wb.save(filesave)
@@ -893,26 +899,15 @@ def allformat(sheet, groups):
     for c in range(ord("D"), ord(char) + 1):
         ws.column_dimensions[chr(c)].width = 16
 
-    # TODO: adjust alignments
     # Headers Alignment
     for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
         for cell in row:
             cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
-    # Columns B, C and D
-    for row in ws.iter_rows(min_col=2, max_col=4):
+    # Columns
+    for row in ws.iter_rows(min_col=2, max_col=14):
         for cell in row:
             cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-    # Columns E an F
-    for row in ws.iter_rows(min_col=5, max_col=6):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-    # Columns G, H, I, J and K
-    for row in ws.iter_rows(min_col=7, max_col=14):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
 
         # Color scale
     red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
@@ -933,23 +928,39 @@ def allformat(sheet, groups):
     final_row = ws.max_row
 
     rule_string = f"{start}4:{char}{final_row}"
+
     ws.conditional_formatting.add(rule_string, rule1)
     ws.conditional_formatting.add(rule_string, rule2)
     ws.conditional_formatting.add(rule_string, rule3)
 
 
-def visual(worksheet, plot_index, groups):
+def visual(worksheet, plot_index, groups, chart_style=1, show_axes=True):
+
+    def color_palette(groups):
+        if groups == 2:
+            return ["003f5c", "ffa600"]
+        elif groups == 3:
+            return ["003f5c", "ef5675", "ffa600"]
+        else:
+            return ["003f5c", "7a5195", "ef5675", "ffa600", "a56eff", "570408", "1192e8", "d6f599"]
 
     ws = worksheet
 
     c1 = BarChart()
-    c1.height = 19.05  # default is 7.5
-    c1.width = 33.85  # default is 15
-    c1.plot_area.dTable = DataTable()
-    c1.plot_area.dTable.showHorzBorder = True
-    c1.plot_area.dTable.showVertBorder = True
-    c1.plot_area.dTable.showOutline = True
-    c1.plot_area.dTable.showKeys = True
+    c1.height = 16  # default is 7.5
+    c1.width = 30  # default is 15
+    if chart_style == 1:
+        c1.plot_area.dTable = DataTable()
+        c1.plot_area.dTable.showHorzBorder = True
+        c1.plot_area.dTable.showVertBorder = True
+        c1.plot_area.dTable.showOutline = True
+        c1.plot_area.dTable.showKeys = True
+        c1.legend = None
+    else:
+        c1.dataLabels = DataLabelList()
+        c1.dataLabels.showVal = True
+
+    colors = color_palette(groups)
 
     for seg in range(groups):
         x1 = seg * 2 + 5
@@ -958,13 +969,15 @@ def visual(worksheet, plot_index, groups):
         c1.add_data(data, titles_from_data=True)
         c1.set_categories(cats)
         c1.shape = 4
+        c1.series[seg].graphicalProperties.solidFill = colors[seg]
 
-    c1.x_axis.title = "Categories"
-    c1.y_axis.title = "Percentage"
+    if show_axes:
+        c1.x_axis.title = "Categories"
+        c1.y_axis.title = "Percentage"
     c1.y_axis.majorGridlines = None
     c1.title = ws["B4"].value
 
-    openpyxl.chart.legend.Legend(legendEntry=())
+    c1.legend.position = "b"
 
     # Create a second chart
     if plot_index:
@@ -984,8 +997,6 @@ def visual(worksheet, plot_index, groups):
         # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
         c2.y_axis.crosses = "max"
         c1 += c2
-
-    c1.legend = None
 
     ws.add_chart(c1, "D15")
 
@@ -1022,146 +1033,21 @@ def preprocess(df):
     return df
 
 
-# legacy code
-def allformat2(sheet):
-
-    # Selecting active sheet
-    ws = sheet
-
-    # !Amateur Hour begins
-    ws.column_dimensions["B"].width = 32
-    ws.column_dimensions["C"].width = 32
-    ws.column_dimensions["D"].width = 32
-    ws.column_dimensions["E"].width = 16
-    ws.column_dimensions["F"].width = 16
-    ws.column_dimensions["G"].width = 16
-    ws.column_dimensions["H"].width = 16
-    ws.column_dimensions["I"].width = 16
-    ws.column_dimensions["J"].width = 16
-    ws.column_dimensions["K"].width = 16
-
-    for col in ws["E"]:
-        col.number_format = "0%"
-
-    for col in ws["G"]:
-        col.number_format = "0%"
-
-    for col in ws["H"]:
-        col.number_format = "#,#0"
-
-    # Headers Alignment
-    for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-    # Columns B, C and D
-    for row in ws.iter_rows(min_col=2, max_col=4):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-    # Columns E an F
-    for row in ws.iter_rows(min_col=5, max_col=6):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-    # Columns G, H, I, J and K
-    for row in ws.iter_rows(min_col=7, max_col=14):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-        # Color scale
-    red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
-    yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
-    green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
-    white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
-
-    dxf1 = DifferentialStyle(fill=yellow)
-    dxf2 = DifferentialStyle(fill=red)
-    dxf3 = DifferentialStyle(fill=green)
-    dxf4 = DifferentialStyle(fill=white)
-
-    rule1 = Rule(type="cellIs", operator="between", formula=[0.0, 85.0], dxf=dxf1)
-    rule2 = Rule(type="cellIs", operator="between", formula=[85.0, 115.0], dxf=dxf2)
-    rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
-    rule4 = Rule(type='cellIs', operator="equal", formula=[0], dxf=dxf4)
-
-    try:
-        final_row = ws.max_row
-        rule_string = f"H4:H{final_row}"
-        ws.conditional_formatting.add(rule_string, rule1)
-        ws.conditional_formatting.add(rule_string, rule2)
-        ws.conditional_formatting.add(rule_string, rule3)
-        # ws.conditional_formatting.add(rule_string, rule4)
-
-    except Exception:
-        # so you found this code huh.. this is the pinacle of optimisation btw
-        pass
-
-
-def visual2(worksheet, plot_index):
-    # change size 111222
-
-    ws = worksheet
-
-    c1 = BarChart()
-    c1.height = 19.05  # default is 7.5
-    c1.width = 33.85  # default is 15
-    c1.plot_area.dTable = DataTable()
-    c1.plot_area.dTable.showHorzBorder = True
-    c1.plot_area.dTable.showVertBorder = True
-    c1.plot_area.dTable.showOutline = True
-    c1.plot_area.dTable.showKeys = True
-
-    data = Reference(ws, min_col=5, min_row=3, max_row=ws.max_row, max_col=5)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    data = Reference(ws, min_col=7, min_row=3, max_row=ws.max_row, max_col=7)
-    cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-    c1.add_data(data, titles_from_data=True)
-    c1.set_categories(cats)
-    c1.shape = 4
-
-    c1.x_axis.title = "Categories"
-    c1.y_axis.title = "Percentage"
-    c1.y_axis.majorGridlines = None
-    c1.title = ws["B4"].value
-
-    openpyxl.chart.legend.Legend(legendEntry=())
-
-    # Create a second chart
-    if plot_index:
-        c2 = LineChart()
-
-        data = Reference(ws, min_col=8, min_row=3, max_row=ws.max_row, max_col=8)
-        cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
-        c2.add_data(data, titles_from_data=True)
-        c2.set_categories(cats)
-
-        c2.y_axis.axId = 200
-        c2.y_axis.title = "Index"
-
-        # Display y-axis of the second chart on the right by setting it to cross the x-axis at its maximum
-        c2.y_axis.crosses = "max"
-        c1 += c2
-
-    c1.legend = None
-
-    ws.add_chart(c1, "D15")
-
 #
 #
 #
-new_df2 = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221215.xlsx")
 
-new_df2 = new_df2.drop(
-    columns=[
-        "lead_id",
-        "t0_baseline_date",
-        "full_tour_id",
-    ]
-)
+# new_df2 = pd.read_excel(
+#     r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221215.xlsx"
+# )
+
+# new_df2 = new_df2.drop(
+#     columns=[
+#         "lead_id",
+#         "t0_baseline_date",
+#         "full_tour_id",
+#     ]
+# )
 
 # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
 # # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
