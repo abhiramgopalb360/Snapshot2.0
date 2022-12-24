@@ -590,7 +590,6 @@ def Snapshot_Profile(
     index_order = []
     # TODO: array([2, 0, 1]) Always encode 0 as US
     # Change the US population as BASELINE
-    mapping_dict = mapping_dict
     for seg in np.sort(list(mapping_dict.keys())):
         profile_1 = DataProfiler(profile_data[profile_data[segment_var] == mapping_dict[seg]]).create_profile(number_of_bins=nbins, cts_cuts=continuous_var_cuts)
 
@@ -675,7 +674,7 @@ def Snapshot_Profile(
             if os.path.exists(filesave):
                 os.remove(filesave)
             report2(profile, overall=overall, savepath=filesave2, continuous_path=continuous_path)
-        finally:
+        except Exception:
             print("Category skipped")    # TODO: Find out why report2 breaks sometimes
 
         CreateXLProfile_Snap(profile, overall, savepath=filesave)
@@ -864,16 +863,15 @@ def Snapshot_Profile(
             # make new sheet the active sheet we are working on
             wb.active = wb["Index"]
             all_var_profiling_ws1 = wb.active
-            all_var_profiling_ws1.append(wb.sheetnames)
+            for i in wb.sheetnames:
+                all_var_profiling_ws1.append([i])
 
             wb.save(filesave)
 
     return profile
-    # return profile
 
 
 # Formatting functions
-
 
 def allformat(sheet, groups):
 
@@ -940,7 +938,7 @@ def visual(worksheet, plot_index, groups, chart_style=1, show_axes=True):
         if groups == 2:
             return ["003f5c", "ffa600"]
         elif groups == 3:
-            return ["003f5c", "ef5675", "ffa600"]
+            return ["003f5c", "e4537d", "ffa600"]
         else:
             return ["003f5c", "7a5195", "ef5675", "ffa600", "a56eff", "570408", "1192e8", "d6f599"]
 
@@ -1031,46 +1029,3 @@ def merge(path):
 
 def preprocess(df):
     return df
-
-
-#
-#
-#
-
-# new_df2 = pd.read_excel(
-#     r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_subsample_21_22_20221215.xlsx"
-# )
-
-# new_df2 = new_df2.drop(
-#     columns=[
-#         "lead_id",
-#         "t0_baseline_date",
-#         "full_tour_id",
-#     ]
-# )
-
-# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
-# # mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
-
-# # Set up variables for snapshot
-# file_name = "profiles_temp"
-# seg_var = "source"
-# bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
-# # Read in file and set bins
-
-# profile_data = new_df2
-# segment_var = seg_var
-# continuous_path = bin_vars_path
-# segments = None
-# segment_names = None
-# include = None
-# variable_order = None
-# other_segment = False
-# file = file_name
-# plot_index = False
-# exclude = []
-# PPT = True
-# continuous = []
-# nbins = 5
-# excludeother = False
-# mapping_dict = mapping_dict
