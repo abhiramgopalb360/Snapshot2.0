@@ -17,44 +17,61 @@ from vyper.utils.tools import StatisticalTools as st
 from explorer import DataProfiler  # 100522 customized explorer
 
 
+warnings.simplefilter(action="ignore", category=pd.core.common.SettingWithCopyWarning)
+
+
 class Snapshot:
     def __init__(
         self,
         profile_data: pd.DataFrame,
-        segment_var,
-        segments,
-        segment_names,
-        include,
-        continuous_path,
-        variable_order,
-        nbins=6,
-        other_segment=False,
-        file="Profile",
-        exclude="",
-        continuous=[],
-        excludeother=False,
-        mapping_dict={},
-        na_drop_threshold=.95
+        segment_var: list,
+        baseline: str = "",
+        segments: list = [],
+        filename: str = "Profile",
+        continuous_path: str = "",
+        nbins: int = 6,
+        variable_order: list = [],
+        include: list = [],
+        exclude: list = [],
+        continuous: list = [],
+        exclude_other: bool = False,
+        na_drop_threshold: float = 0.95,
     ) -> None:
 
         self.profile_data = profile_data
         self.segment_var = segment_var
-        self.segments = segments
-        self.segment_names = segment_names
-        self.include = include
+        self.filename = filename
         self.continuous_path = continuous_path
-        self.variable_order = variable_order
         self.nbins = nbins
-        self.other_segment = other_segment
-        self.file = file
+        self.variable_order = variable_order
+        self.include = include
         self.exclude = exclude
         self.continuous = continuous
-        self.excludeother = excludeother
-        self.mapping_dict = mapping_dict
-        self.groups = len(mapping_dict)
+        self.exclude_other = exclude_other
         self.na_drop_threshold = na_drop_threshold
 
-    def profiler(self):
+        if not segments:
+            segments = profile_data[segment_var].unique().tolist()
+        else:
+            all_segs = profile_data[segment_var].unique().tolist()
+            for seg in segments:
+                if seg not in all_segs:
+                    raise ValueError(f"{seg} not in segment col")
+        self.num_segments = len(segments)
+
+        if baseline:
+            if baseline not in segments:
+                raise ValueError(f"{baseline} not in segment col")
+            segments.insert(0, segments.pop(segments.index(baseline)))
+
+        self.mapping_dict = {}
+        for i, seg in enumerate(segments):
+            if i == 0:
+                self.mapping_dict["Baseline"] = seg
+            else:
+                self.mapping_dict[f"Segment_{i}"] = seg
+
+    def run_profiler(self) -> None:
         continuous_var_bounds = self.continuous_bins(self.continuous_path)
         self.preprocess()
         profile_data = self.profile_data
@@ -65,27 +82,6 @@ class Snapshot:
             except Exception:
                 continue
 
-        if self.segments is None:
-            segments = pd.unique(profile_data[self.segment_var])
-            other_segment = False
-            segment_names = str(segments)
-
-        if not (isinstance(other_segment, bool)):
-            raise ValueError("other must be True or False.")
-
-        if segment_names is None:
-            segment_names = str(segments)
-            if other_segment:
-                segment_names = [segment_names, "other"]
-
-        if len(segments) + other_segment != len(segment_names):
-            if len(segments) == len(segment_names):
-                segment_names = [segment_names, "other"]
-            else:
-                warnings.warn("Incorrect length of names, replacing by segments")
-                segment_names = str(segments)
-            if other_segment:
-                segment_names = [segment_names, "other"]
         # output -> [1 2 0]
         varclass = pd.DataFrame()
         # 1005, raise threshold for OCCU AND DMA and
@@ -93,14 +89,15 @@ class Snapshot:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col])], columns=[col])], axis=1)
         varclass[varclass.columns in self.continuous] = "continuous"
 
-        if not (self.include is None):
+        if self.include:
             self.exclude = varclass.columns[varclass.columns not in self.include]
         # Variables to exclude
         varclass[varclass.columns in self.exclude] = "exclude"
 
-        if self.excludeother:
+        if self.exclude_other:
             varclass[varclass.columns == "Categorical+other"] = "exclude"
         continuous_var_cuts = dict()
+        self.varclass = varclass
 
         # binning continuous variable to bins in the binning file
         for variable in varclass.columns[varclass.iloc[0] == "continuous"]:
@@ -141,7 +138,6 @@ class Snapshot:
 
         profile = profile[col_order + index_order]
 
-        # print(profile)
         for i in profile.columns:
 
             if "Count" in i:
@@ -180,7 +176,6 @@ class Snapshot:
         overall = {}
         for variable in PSI:
 
-            # print(variable)
             for label in PSI[variable]:
                 if "Overall" in str(label):
                     continue
@@ -200,14 +195,13 @@ class Snapshot:
 
         self.profile = profile
 
-        if self.file:
-            # Make Profile #
-            try:
-                self.report2()
-            except Exception:
-                print("report2 skipped")  # TODO: Find out why report2 breaks sometimes
+        # Make Profile #
+        try:
+            self.report2()
+        except Exception:
+            print("report2 skipped")  # TODO: Find out why report2 can break sometimes
 
-            self.create_profile_snapshot()
+        self.create_profile_snapshot()
 
     def continuous_bins(self, continuous_path):
         # Read in file
@@ -235,7 +229,6 @@ class Snapshot:
         prev_dict = {}
 
         def toDict(Field, Value, VD, snowflake, FDdescription):
-
             if Value == "":
                 return 0
 
@@ -259,7 +252,6 @@ class Snapshot:
 
         profile.insert(1, "Label", "")
         profile["Label"] = profile["Variable"].apply(lambda x: addFieldName(x))
-        # print(profile[profile['Variable']=='MT_CONSISTENT_RELIGIOUS_DONORS'])
         # Add Field Description
 
         def addFieldDesc(x):
@@ -268,20 +260,13 @@ class Snapshot:
 
         profile.insert(2, "Definition", "")
         profile["Definition"] = profile["Variable"].apply(lambda x: addFieldDesc(x))
-        # print(profile[profile['Variable']=='ETHNIC_GROUP_CODE3'])
-        # print(profile[profile['Variable']=='MT_CONSISTENT_RELIGIOUS_DONORS'])
         # Add Value Description
 
         def addValuedescription(snowflake, value):
             if snowflake in prev_dict.keys():
                 if value in prev_dict[snowflake].keys():
                     return prev_dict[snowflake][value]["desp"]
-                elif (
-                    snowflake.startswith("MT_")
-                    or snowflake.startswith("PROPENSITY_")
-                    or snowflake.startswith("LIKELY_")
-                    or snowflake == "TGT_PRE_MOVER_20_MODEL"
-                ):
+                elif (snowflake.startswith("MT_") or snowflake.startswith("PROPENSITY_") or snowflake.startswith("LIKELY_") or snowflake == "TGT_PRE_MOVER_20_MODEL"):
                     return prev_dict[snowflake][str(value)]["desp"]
                 else:
                     try:
@@ -289,11 +274,10 @@ class Snapshot:
                         if value in prev_dict[snowflake].keys():
                             return prev_dict[snowflake][value]["desp"]
                     except Exception:
-                        pass
+                        print("Line 277")
 
         profile.insert(4, "Description", "")
         profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], x["Category"]), axis=1)
-        # print(prev_dict['ETHNIC_GROUP_CODE3'])
 
         return profile
 
@@ -355,7 +339,7 @@ class Snapshot:
             max_cols = profile.shape[1]
 
             input_rows = range(4, max_rows + 4)
-            input_cols = list(string.ascii_uppercase)[1 : max_cols + 1]
+            input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
 
             y = 0
             for i in input_cols:
@@ -522,7 +506,7 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
-        savepath = f"{self.file}_Category.xlsx"
+        savepath = f"{self.filename}_Category.xlsx"
         if os.path.exists(savepath):
             os.remove(savepath)
         wb.save(savepath)
@@ -595,7 +579,7 @@ class Snapshot:
                 all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                 counter.append(x)
                 continue
-            all_var_profiling_ws[x] = "Segment " + str(counter_val)
+            all_var_profiling_ws[x] = "SEGMENT " + str(counter_val)
             counter_val += 1
             counter.append(x)
             # all_var_profiling_ws.merge_cells(start_row=2, start_column=5, end_row=2, end_column=5)
@@ -686,24 +670,23 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
-        savepath = f"{self.file}_Profile.xlsx"
+        savepath = f"{self.filename}_Profile.xlsx"
         if os.path.exists(savepath):
             os.remove(savepath)
         if savepath != "":
             wb.save(savepath)
             self.merge(savepath)
 
-    def allformat(self, ws):
-        # !Amateur Hour Is Over
+    def allformat(self, ws) -> None:
 
         char = "C"
-        for _ in range(self.groups):
+        for _ in range(self.num_segments):
             char = chr(ord(char) + 2)
             for col in ws[char]:
                 col.number_format = "0%"
 
         start = chr(ord(char) + 1)
-        for _ in range(1, self.groups):
+        for _ in range(1, self.num_segments):
             char = chr(ord(char) + 1)
             for col in ws[char]:
                 col.number_format = "#,#0"
@@ -747,7 +730,7 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
 
-    def create_ppt(self, plot_index=True, chart_style=1, show_axes=True) -> None:
+    def create_visual(self, plot_index=True, chart_style=1, show_axes=True) -> None:
 
         self.plot_index = plot_index
         self.chart_style = chart_style
@@ -918,16 +901,13 @@ class Snapshot:
                     if key is not None:
                         for merge_column in merge_columns:
                             ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row, end_column=merge_column)
-                            ws.cell(row=start_row, column=merge_column).alignment = Alignment(
-                                horizontal="center", vertical="center", wrap_text=True
-                            )  # 1011
+                            ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                         start_row = row
                     key = row_cells[0].value
                 if row == max_row:
                     row += 1
 
-            self.visual(ws, chart_style=2, show_axes=False)
-
+            self.visual(ws)
             self.allformat(ws)
 
         # TODO: format Index page
@@ -938,14 +918,14 @@ class Snapshot:
         for i in wb.sheetnames:
             all_var_profiling_ws1.append([i])
 
-        filesave = f"{self.file}_PPT.xlsx"
+        filesave = f"{self.filename}_Chart.xlsx"
         wb.save(filesave)
 
-    def visual(self, ws):
-        def color_palette(groups):
-            if groups == 2:
+    def visual(self, ws) -> None:
+        def color_palette(n):
+            if n == 2:
                 return ["003f5c", "ffa600"]
-            elif groups == 3:
+            elif n == 3:
                 return ["003f5c", "e4537d", "ffa600"]
             else:
                 return ["003f5c", "7a5195", "ef5675", "ffa600", "a56eff", "570408", "1192e8", "d6f599"]
@@ -963,10 +943,11 @@ class Snapshot:
         else:
             c1.dataLabels = DataLabelList()
             c1.dataLabels.showVal = True
+            c1.legend.position = "b"
 
-        colors = color_palette(self.groups)
+        colors = color_palette(self.num_segments)
 
-        for seg in range(self.groups):
+        for seg in range(self.num_segments):
             x1 = seg * 2 + 5
             data = Reference(ws, min_col=x1, min_row=3, max_row=ws.max_row, max_col=x1)
             cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
@@ -981,13 +962,11 @@ class Snapshot:
         c1.y_axis.majorGridlines = None
         c1.title = ws["B4"].value
 
-        c1.legend.position = "b"
-
         # Create a second chart
         if self.plot_index:
             c2 = LineChart()
 
-            for seg in range(1, self.groups):
+            for seg in range(1, self.num_segments):
                 x2 = seg + x1
 
                 data = Reference(ws, min_col=x2, min_row=3, max_row=ws.max_row, max_col=x2)
@@ -1004,7 +983,7 @@ class Snapshot:
 
         ws.add_chart(c1, "D15")
 
-    def merge(self, path):
+    def merge(self, path) -> None:
         # Loading work book
         wb = load_workbook(path)
         # Selecting active sheet
@@ -1031,5 +1010,5 @@ class Snapshot:
 
         wb.save(path)
 
-    def preprocess(self):
+    def preprocess(self) -> None:
         self.profile_data = pd.DataFrame(self.profile_data)
