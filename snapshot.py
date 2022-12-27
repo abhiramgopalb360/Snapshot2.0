@@ -41,7 +41,6 @@ class Snapshot:
         self.profile_data = profile_data
         self.segment_var = segment_var
         self.filename = filename
-        self.continuous_path = continuous_path
         self.nbins = nbins
         self.variable_order = variable_order
         self.include = include
@@ -71,22 +70,30 @@ class Snapshot:
             else:
                 self.mapping_dict[f"Segment_{i}"] = seg
 
-    def run_profiler(self) -> None:
-        continuous_var_bounds = self.continuous_bins(self.continuous_path)
-        self.preprocess()
-        profile_data = self.profile_data
+        # get custom bounds for continuous vars
+        df_continuous = pd.read_csv(continuous_path)
+        # Drop variables that do not have pre-defined bins
+        df_continuous.dropna(inplace=True)
 
-        for col in profile_data:
+        # create bin dictionary for run_profiler()
+        self.continuous_var_bounds = {}
+        for index, row in df_continuous.iterrows():
+            # Read in the row as string and convert to list of floats
+            self.continuous_var_bounds[row["Attribute"]] = [float(i) for i in row["Bin"].split(sep=",")]
+
+    def run_profiler(self) -> None:
+
+        self.preprocess()
+
+        for col in self.profile_data:
             try:
-                profile_data[col] = pd.to_numeric(profile_data[col])
+                self.profile_data[col] = pd.to_numeric(self.profile_data[col])
             except Exception:
                 continue
 
-        # output -> [1 2 0]
         varclass = pd.DataFrame()
-        # 1005, raise threshold for OCCU AND DMA and
-        for col in profile_data.columns:
-            varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(profile_data[col])], columns=[col])], axis=1)
+        for col in self.profile_data.columns:
+            varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(self.profile_data[col])], columns=[col])], axis=1)
         varclass[varclass.columns in self.continuous] = "continuous"
 
         if self.include:
@@ -101,22 +108,22 @@ class Snapshot:
 
         # binning continuous variable to bins in the binning file
         for variable in varclass.columns[varclass.iloc[0] == "continuous"]:
-            if not continuous_var_bounds:
-                continuous_var_bounds = dict()
+            if not self.continuous_var_bounds:
+                self.continuous_var_bounds = dict()
             if variable.startswith("MT_") or variable.startswith("PROPENSITY_") or variable.startswith("LIKELY_") or variable == "TGT_PRE_MOVER_20_MODEL":
-                continuous_var_cuts[variable] = pd.cut(profile_data[variable], bins=[0, 5, 25, 45, 65, 85, 99])
-            elif variable in continuous_var_bounds:
-                cut_bins = continuous_var_bounds[variable]
-                continuous_var_cuts[variable] = pd.cut(profile_data[variable], bins=cut_bins)
+                continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=[0, 5, 25, 45, 65, 85, 99])
+            elif variable in self.continuous_var_bounds:
+                cut_bins = self.continuous_var_bounds[variable]
+                continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=cut_bins)
             else:
-                continuous_var_cuts[variable] = st.get_breaks(profile_data.loc[:, variable], nbins=self.nbins, squash_extremes=False)
+                continuous_var_cuts[variable] = st.get_breaks(self.profile_data.loc[:, variable], nbins=self.nbins, squash_extremes=False)
 
         col_order = []
         index_order = []
         # TODO: array([2, 0, 1]) Always encode 0 as US
         # Change the US population as BASELINE
         for seg in np.sort(list(self.mapping_dict.keys())):
-            profile_1 = DataProfiler(profile_data[profile_data[self.segment_var] == self.mapping_dict[seg]]).create_profile(
+            profile_1 = DataProfiler(self.profile_data[self.profile_data[self.segment_var] == self.mapping_dict[seg]]).create_profile(
                 number_of_bins=self.nbins, cts_cuts=continuous_var_cuts
             )
 
@@ -146,7 +153,7 @@ class Snapshot:
                 profile[i][profile[i].isna()] = 0
 
         # Defining PSI
-        PSI = {}
+        psi = {}
         uscol = ""
         NumPSI = []
         for i in profile.columns:
@@ -157,35 +164,35 @@ class Snapshot:
                 uscol = i
 
         for index, row in profile.iterrows():
-            if row["Variable"] not in PSI:
-                PSI[row["Variable"]] = {}
-            if row["Category"] not in PSI[row["Variable"]]:
-                PSI[row["Variable"]][row["Category"]] = {}
+            if row["Variable"] not in psi:
+                psi[row["Variable"]] = {}
+            if row["Category"] not in psi[row["Variable"]]:
+                psi[row["Variable"]][row["Category"]] = {}
 
             for i in NumPSI:
 
                 try:
-                    PSI[row["Variable"]][row["Category"]][i + "_PSI"] = (row[uscol] - row[i]) * np.log(row[uscol] / row[i])
-                    if PSI[row["Variable"]][row["Category"]][i + "_PSI"] == np.inf:
-                        PSI[row["Variable"]][row["Category"]][i + "_PSI"] = 0
-                    PSI[row["Variable"]][i + "_Overall"] = 0
+                    psi[row["Variable"]][row["Category"]][i + "_PSI"] = (row[uscol] - row[i]) * np.log(row[uscol] / row[i])
+                    if psi[row["Variable"]][row["Category"]][i + "_PSI"] == np.inf:
+                        psi[row["Variable"]][row["Category"]][i + "_PSI"] = 0
+                    psi[row["Variable"]][i + "_Overall"] = 0
 
                 except Exception:
-                    PSI[row["Variable"]][row["Category"]][i + "_PSI"] = 0
+                    psi[row["Variable"]][row["Category"]][i + "_PSI"] = 0
 
         overall = {}
-        for variable in PSI:
+        for variable in psi:
 
-            for label in PSI[variable]:
+            for label in psi[variable]:
                 if "Overall" in str(label):
                     continue
 
-                for scores in PSI[variable][label]:
+                for scores in psi[variable][label]:
                     if variable not in overall:
                         overall[variable] = {}
                     if scores not in overall[variable]:
                         overall[variable][scores] = 0
-                    overall[variable][scores] += PSI[variable][label][scores]
+                    overall[variable][scores] += psi[variable][label][scores]
 
         # Variable overall contains all the overall PSI Scores
         self.overall = overall
@@ -202,314 +209,6 @@ class Snapshot:
             print("report2 skipped")  # TODO: Find out why report2 can break sometimes
 
         self.create_profile_snapshot()
-
-    def continuous_bins(self, continuous_path):
-        # Read in file
-        df_continuous = pd.read_csv(continuous_path)
-        # Drop variables that do not have pre-defined bins
-        df_continuous.dropna(inplace=True)
-
-        # create bin dictionary for Snapshot_Profile()
-        continuous_bounds = {}
-        for index, row in df_continuous.iterrows():
-            # Read in the row as string and convert to list of floats
-            continuous_bounds[row["Attribute"]] = [float(i) for i in row["Bin"].split(sep=",")]
-        return continuous_bounds
-
-    def addextra(self, epsilonpath, profile):
-        # Read in the data and prepare the dataframe
-        Field_dict = pd.read_excel(epsilonpath)
-        Field_dict = Field_dict.loc[:, "NAME":"Category"]
-        Field_dict["NAME"].fillna(method="ffill", inplace=True)
-        Field_dict["Snowflake"].fillna(method="ffill", inplace=True)
-        Field_dict["Value"].fillna("", inplace=True)
-        Field_dict.columns = ["NAME", "Description", "RATEID", "Value", "Value Description", "Current Count", "Current %", "Snowflake", "Category"]
-        # Confirm numpy is imported
-
-        prev_dict = {}
-
-        def toDict(Field, Value, VD, snowflake, FDdescription):
-            if Value == "":
-                return 0
-
-            if snowflake not in prev_dict:
-                prev_dict[snowflake] = {}
-                prev_dict[snowflake]["Field"] = Field
-                prev_dict[snowflake]["Field Description"] = FDdescription
-            if Value not in prev_dict[snowflake]:
-                prev_dict[snowflake][Value] = {}
-            prev_dict[snowflake][Value]["desp"] = VD
-            # prev_dict[snowflake][Value]['Current Count'] =  CC
-            # prev_dict[snowflake][Value]['Current %'] = CP
-            return prev_dict
-
-        k = Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
-        # Add the Field Name
-
-        def addFieldName(x):
-            if x in prev_dict.keys():
-                return prev_dict[x]["Field"]
-
-        profile.insert(1, "Label", "")
-        profile["Label"] = profile["Variable"].apply(lambda x: addFieldName(x))
-        # Add Field Description
-
-        def addFieldDesc(x):
-            if x in prev_dict.keys():
-                return prev_dict[x]["Field Description"]
-
-        profile.insert(2, "Definition", "")
-        profile["Definition"] = profile["Variable"].apply(lambda x: addFieldDesc(x))
-        # Add Value Description
-
-        def addValuedescription(snowflake, value):
-            if snowflake in prev_dict.keys():
-                if value in prev_dict[snowflake].keys():
-                    return prev_dict[snowflake][value]["desp"]
-                elif (snowflake.startswith("MT_") or snowflake.startswith("PROPENSITY_") or snowflake.startswith("LIKELY_") or snowflake == "TGT_PRE_MOVER_20_MODEL"):
-                    return prev_dict[snowflake][str(value)]["desp"]
-                else:
-                    try:
-                        value = int(value)
-                        if value in prev_dict[snowflake].keys():
-                            return prev_dict[snowflake][value]["desp"]
-                    except Exception:
-                        print("Line 277")
-
-        profile.insert(4, "Description", "")
-        profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], x["Category"]), axis=1)
-
-        return profile
-
-    def report2(self) -> None:
-
-        df_categories = pd.read_csv(self.continuous_path)
-        # Drop variables that do not have pre-defined bins
-        unique_categories = df_categories["Category"].unique().tolist()
-
-        profile = self.profile
-
-        wb = Workbook()
-
-        # set border line thickness
-        thick = Side(border_style="thick", color="000000")
-        # medium = Side(border_style="medium", color="000000")
-        thin = Side(border_style="thin", color="000000")
-
-        # get max rows and cols of profiling df
-        max_rows = profile.shape[0]
-        max_cols = profile.shape[1]
-        from openpyxl.utils.dataframe import dataframe_to_rows
-
-        # Create dataframes for each category
-        all_var = []
-        for cat in unique_categories:
-            # Find variables under category
-            snowflake_vars = df_categories[df_categories["Category"] == cat]["Snowflake Field names"].tolist()
-            # Subset dataframe
-            subset_df = profile[profile["Variable"].isin(snowflake_vars)]
-            all_var.append(snowflake_vars)
-            # Creating new sheet for each category
-            all_var_profiling_ws = wb.create_sheet(cat, 0)
-            # make new sheet the active sheet we are working on
-            all_var_profiling_ws = wb.active
-
-            thin = Side(border_style="thin", color="000000")
-            border = Border(top=thick, left=thick, right=thick, bottom=thick)
-
-            rows = dataframe_to_rows(subset_df)
-
-            for r_idx, row in enumerate(rows, 1):
-                for c_idx, value in enumerate(row, 1):
-                    if type(value) == pd._libs.interval.Interval:
-                        value = str(value)
-                    all_var_profiling_ws.cell(row=r_idx + 1, column=c_idx + 1, value=value)
-                    all_var_profiling_ws.cell(row=r_idx + 1, column=c_idx + 1).border = Border(top=thin, left=thin, right=thin, bottom=thin)
-
-            # remove gridlines from the sheet
-            all_var_profiling_ws.sheet_view.showGridLines = False
-
-            # set border line thickness
-            thick = Side(border_style="thick", color="000000")
-            # medium = Side(border_style="medium", color="000000")
-            thin = Side(border_style="thin", color="000000")
-
-            # get max rows and cols of profiling df
-            max_rows = profile.shape[0]
-            max_cols = profile.shape[1]
-
-            input_rows = range(4, max_rows + 4)
-            input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
-
-            y = 0
-            for i in input_cols:
-                x = "3"
-                x = i + x
-
-                all_var_profiling_ws[x].font = Font(bold=True)
-                current_cell = all_var_profiling_ws[x]
-                current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 20221011
-                current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-
-                if y == 0:
-                    current_cell.border = Border(top=thick, left=thick, right=thin, bottom=thin)
-                elif y == max_cols - 1:
-                    current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
-                else:
-                    current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
-
-                all_var_profiling_ws[x] = profile.columns[y]
-                y = y + 1
-
-            counter = []
-            counter_val = 1
-
-            for index, i in enumerate(input_cols[5::]):
-                x = "2"
-                x = i + x
-                if index % 2 == 1:
-                    all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
-                    all_var_profiling_ws[counter[-1]].font = Font(bold=True)
-                    current_cell = all_var_profiling_ws[counter[-1]]
-                    current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 20221011
-                    current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-                    continue
-
-                if (i == input_cols[-2]) or (i == input_cols[-1]):
-                    break
-                if i == "G":
-                    all_var_profiling_ws[x] = "BASELINE"
-                    all_var_profiling_ws.merge_cells(start_row=2, start_column=7, end_row=2, end_column=8)
-                    counter.append(x)
-                    continue
-                all_var_profiling_ws[x] = "Segment " + str(counter_val)
-                counter_val += 1
-                counter.append(x)
-
-            def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
-
-                """
-                Apply styles to a range of cells as if they were a single cell.
-
-                :param ws:  Excel worksheet instance
-                :param range: An excel range to style (e.g. A1:F20)
-                :param border: An openpyxl Border
-                :param fill: An openpyxl PatternFill or GradientFill
-                :param font: An openpyxl Font object
-                """
-
-                top = Border(top=border.top)
-                left = Border(left=border.left)
-                right = Border(right=border.right)
-                bottom = Border(bottom=border.bottom)
-
-                first_cell = ws[cell_range.split(":")[0]]
-                if alignment:
-                    ws.merge_cells(cell_range)
-                    first_cell.alignment = alignment
-
-                rows = ws[cell_range]
-                if font:
-                    first_cell.font = font
-
-                for cell in rows[0]:
-                    cell.border = cell.border + top
-                for cell in rows[-1]:
-                    cell.border = cell.border + bottom
-
-                for row in rows:
-                    l = row[0]
-                    r = row[-1]
-                    l.border = l.border + left
-                    r.border = r.border + right
-                    if fill:
-                        for c in row:
-                            c.fill = fill
-
-                        # medium = Side(border_style="medium", color="000000")
-
-            for range1 in all_var_profiling_ws.merged_cells.ranges:
-                style_range(all_var_profiling_ws, str(range1), border=border)
-
-            all_var_profiling_ws.move_range("B3:Z3", cols=1)
-            all_var_profiling_ws.delete_rows(2)
-            all_var_profiling_ws.delete_cols(2)
-
-            all_var_profiling_ws.insert_rows(2)
-
-            counter = []
-            counter_val = 1
-
-            for index, i in enumerate(input_cols[5::]):
-                x = "2"
-                x = i + x
-                if index % 2 == 1:
-                    all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
-                    all_var_profiling_ws[counter[-1]].font = Font(bold=True)
-                    current_cell = all_var_profiling_ws[counter[-1]]
-                    current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
-                    current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-                    continue
-
-                if (i == input_cols[-2]) or (i == input_cols[-1]):
-                    break
-                if i == "G":
-                    all_var_profiling_ws[x] = "BASELINE"
-                    all_var_profiling_ws.merge_cells(start_row=2, start_column=7, end_row=2, end_column=8)
-                    counter.append(x)
-                    continue
-                all_var_profiling_ws[x] = "Segment " + str(counter_val)
-                counter_val += 1
-                counter.append(x)
-
-            # all_var_profiling_ws.delete_cols(2)
-            # all_var_profiling_ws.delete_rows(3)
-
-            # Merge cells A and B test
-            key_column = 2
-            merge_columns = [2, 3, 4]
-            start_row = 4
-            max_row = all_var_profiling_ws.max_row
-            key = None
-
-            # Iterate all rows in `key_colum`
-            for row, row_cells in enumerate(
-                all_var_profiling_ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row
-            ):
-                if key != row_cells[0].value or row == max_row:
-                    if key is not None:
-                        for merge_column in merge_columns:
-                            all_var_profiling_ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
-                            all_var_profiling_ws.cell(row=start_row, column=merge_column).alignment = Alignment(
-                                horizontal="center", vertical="center", wrap_text=True
-                            )  # 1011
-                        start_row = row
-                    key = row_cells[0].value
-                if row == max_row:
-                    row += 1
-
-            self.allformat(all_var_profiling_ws)
-
-        ws2 = wb.create_sheet("Allcategory", 0)
-
-        psi_df = pd.DataFrame(self.overall).transpose().reset_index()
-        psi_df.rename({"index": "Category"}, axis=1, inplace=True)
-
-        def flatten(xss):
-            return [x for xs in xss for x in xs]
-
-        all_var2 = flatten(all_var)
-        psi_df1 = psi_df[psi_df["Category"].isin(all_var2)]
-
-        rows = dataframe_to_rows(psi_df1, index=False)
-        for r_idx, row in enumerate(rows, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws2.cell(row=r_idx, column=c_idx, value=value)
-
-        savepath = f"{self.filename}_Category.xlsx"
-        if os.path.exists(savepath):
-            os.remove(savepath)
-        wb.save(savepath)
 
     def create_profile_snapshot(self) -> None:
         wb = Workbook()
@@ -810,6 +509,7 @@ class Snapshot:
                             current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
                         else:
                             current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
+
         for col in wb.sheetnames:
             if col == "Sheet":
                 continue
@@ -1011,4 +711,5 @@ class Snapshot:
         wb.save(path)
 
     def preprocess(self) -> None:
+        # TODO add preprocessing for envision and acxiom fields
         self.profile_data = pd.DataFrame(self.profile_data)
