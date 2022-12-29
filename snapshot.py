@@ -55,12 +55,12 @@ class Snapshot:
             all_segs = profile_data[segment_var].unique().tolist()
             for seg in segments:
                 if seg not in all_segs:
-                    raise ValueError(f"{seg} not in segment col")
+                    raise ValueError(f"Segment '{seg}' not in '{segment_var}'")
         self.num_segments = len(segments)
 
         if baseline:
             if baseline not in segments:
-                raise ValueError(f"{baseline} not in segment col")
+                raise ValueError(f"Baseline '{baseline}' not in '{segment_var}'")
             segments.insert(0, segments.pop(segments.index(baseline)))
 
         self.mapping_dict = {}
@@ -74,7 +74,6 @@ class Snapshot:
         df_continuous = pd.read_csv(continuous_path)
         # Drop variables that do not have pre-defined bins
         df_continuous.dropna(inplace=True)
-
         # create bin dictionary for run_profiler()
         self.continuous_var_bounds = {}
         for index, row in df_continuous.iterrows():
@@ -138,9 +137,7 @@ class Snapshot:
                 col_order.append("Count " + str(self.mapping_dict[seg]))
                 col_order.append("Percent " + str(self.mapping_dict[seg]))
                 profile = pd.merge(profile, profile_1, on=["Variable", "Category"], how="outer")
-                profile[str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"]] = (
-                    profile["Percent " + str(self.mapping_dict[seg])] / profile["Percent " + self.mapping_dict["Baseline"]]
-                ) * 100
+                profile[str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"]] = (profile["Percent " + str(self.mapping_dict[seg])] / profile["Percent " + self.mapping_dict["Baseline"]]) * 100
                 index_order.append(str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"])
 
         profile = profile[col_order + index_order]
@@ -157,7 +154,6 @@ class Snapshot:
         uscol = ""
         NumPSI = []
         for i in profile.columns:
-            # print(i)
             if ("Percent" in i) & (self.mapping_dict["Baseline"] not in i):
                 NumPSI.append(i)
             elif ("Percent" in i) & (self.mapping_dict["Baseline"] in i):
@@ -202,22 +198,15 @@ class Snapshot:
 
         self.profile = profile
 
-        # Make Profile #
-        try:
-            self.report2()
-        except Exception:
-            print("report2 skipped")  # TODO: Find out why report2 can break sometimes
-
-        self.create_profile_snapshot()
-
-    def create_profile_snapshot(self) -> None:
+    def create_profile(self) -> None:
         wb = Workbook()
+        del wb["Sheet"]
 
         profile = self.profile
         profile["Category"] = profile["Category"].astype(str)
 
         # create sheet
-        all_var_profiling_ws = wb.create_sheet("profile", 0)
+        all_var_profiling_ws = wb.create_sheet("Profile", 0)
 
         # make new sheet the active sheet we are working on
         all_var_profiling_ws = wb.active
@@ -263,6 +252,10 @@ class Snapshot:
         for index, i in enumerate(input_cols[2::]):
             x = "2"
             x = i + x
+
+            if index >= self.num_segments * 2:
+                break
+
             if index % 2 == 1:
                 all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
                 all_var_profiling_ws[counter[-1]].font = Font(bold=True)
@@ -271,8 +264,6 @@ class Snapshot:
                 current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                 continue
 
-            if (i == input_cols[-2]) or (i == input_cols[-1]):
-                break
             if i == "D":
                 all_var_profiling_ws[x] = "BASELINE"
                 all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
@@ -336,7 +327,6 @@ class Snapshot:
                 all_var_profiling_ws.row_dimensions[j].height = 25
                 x = str(j)
                 x = i + x
-                # print(x)
                 current_cell = all_var_profiling_ws[x]
                 current_cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
@@ -357,7 +347,7 @@ class Snapshot:
                 z = z + 1
             y = y + 1
 
-        self.allformat(all_var_profiling_ws)
+        self.__allformat(all_var_profiling_ws)
 
         ws2 = wb.create_sheet("Allcategory")
 
@@ -369,14 +359,12 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
-        savepath = f"{self.filename}_Profile.xlsx"
-        if os.path.exists(savepath):
-            os.remove(savepath)
-        if savepath != "":
-            wb.save(savepath)
-            self.merge(savepath)
+        self.__merge(wb)
 
-    def allformat(self, ws) -> None:
+        savepath = f"{self.filename}_Profile.xlsx"
+        wb.save(savepath)
+
+    def __allformat(self, ws) -> None:
 
         char = "C"
         for _ in range(self.num_segments):
@@ -470,7 +458,6 @@ class Snapshot:
 
         Allrows = dataframe_to_rows(profile)
 
-        j = 4
         for z in range(0, len(profile_sliced)):
             current_cat = profile["Variable"].iloc[z]
 
@@ -510,9 +497,8 @@ class Snapshot:
                         else:
                             current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
 
+        del wb["Sheet"]
         for col in wb.sheetnames:
-            if col == "Sheet":
-                continue
             temp_df = profile_sliced.loc[profile_sliced["Variable"] == col, :]
             # To code for thresold 3%
             percent_cols = []
@@ -528,7 +514,7 @@ class Snapshot:
                     # delete that sheet
                     std = wb[col]
                     wb.remove(std)
-                    print(f"{std} removed")
+                    # print(f"{std} removed")
                     continue
 
             # temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
@@ -540,7 +526,7 @@ class Snapshot:
                 # delete that sheet
                 std = wb[col]
                 wb.remove(std)
-                print(f"{std} removed")
+                # print(f"{std} removed")
                 continue
             # To code if temp_df contains NA in
 
@@ -569,6 +555,10 @@ class Snapshot:
             for index, i in enumerate(input_cols[2::]):
                 x = "2"
                 x = i + x
+
+                if index >= self.num_segments * 2:
+                    break
+
                 if index % 2 == 1:
                     all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
                     all_var_profiling_ws[counter[-1]].font = Font(bold=True)
@@ -577,14 +567,12 @@ class Snapshot:
                     current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                     continue
 
-                if (i == input_cols[-2]) or (i == input_cols[-1]):
-                    break
                 if i == "D":
                     all_var_profiling_ws[x] = "BASELINE"
                     all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                     counter.append(x)
                     continue
-                all_var_profiling_ws[x] = "Segment " + str(counter_val)
+                all_var_profiling_ws[x] = "SEGMENT " + str(counter_val)
                 counter_val += 1
                 counter.append(x)
 
@@ -607,8 +595,8 @@ class Snapshot:
                 if row == max_row:
                     row += 1
 
-            self.visual(ws)
-            self.allformat(ws)
+            self.__visual(ws)
+            self.__allformat(ws)
 
         # TODO: format Index page
         all_var_profiling_ws1 = wb.create_sheet("Index", 0)
@@ -621,7 +609,7 @@ class Snapshot:
         filesave = f"{self.filename}_Chart.xlsx"
         wb.save(filesave)
 
-    def visual(self, ws) -> None:
+    def __visual(self, ws) -> None:
         def color_palette(n):
             if n == 2:
                 return ["003f5c", "ffa600"]
@@ -683,9 +671,7 @@ class Snapshot:
 
         ws.add_chart(c1, "D15")
 
-    def merge(self, path) -> None:
-        # Loading work book
-        wb = load_workbook(path)
+    def __merge(self, wb) -> Workbook:
         # Selecting active sheet
         ws = wb.active
 
@@ -708,7 +694,7 @@ class Snapshot:
             if row == max_row:
                 row += 1
 
-        wb.save(path)
+        return wb
 
     def preprocess(self) -> None:
         # TODO add preprocessing for envision and acxiom fields

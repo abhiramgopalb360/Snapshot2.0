@@ -376,6 +376,9 @@ def CreateXLProfile_Snap(profile, overall, savepath):
     for index, i in enumerate(input_cols[2::]):
         x = "2"
         x = i + x
+        if index >= 4 * 2:
+            break
+
         if index % 2 == 1:
             all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
             all_var_profiling_ws[counter[-1]].font = Font(bold=True)
@@ -384,8 +387,6 @@ def CreateXLProfile_Snap(profile, overall, savepath):
             current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
             continue
 
-        if (i == input_cols[-2]) or (i == input_cols[-1]):
-            break
         if i == "D":
             all_var_profiling_ws[x] = "BASELINE"
             all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
@@ -1029,3 +1030,43 @@ def merge(path):
 
 def preprocess(df):
     return df
+
+
+
+#
+#
+df = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_4_group_subsample_20221222.xlsx")
+
+df = df.drop(
+    columns=[
+        "lead_id",
+        "t0_baseline_date",
+        "full_tour_id",
+    ]
+)
+
+mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2", "Segment_2": "dataset_3", "Segment_3": "dataset_4"}
+# mapping_dict = {"Baseline": "dataset_1", "Segment_1": "dataset_2"}
+
+# Set up variables for snapshot
+file_name = "profiles_temp"
+seg_var = "source"
+bin_vars_path = "Data/HGV_VIP_attributes_binning.csv"
+# Read in file and set bins
+
+profile_data = df
+segment_var = seg_var
+continuous_path = bin_vars_path
+segments = None
+segment_names = None
+include = None
+variable_order = None
+other_segment = False
+file = file_name
+plot_index = False
+exclude = []
+PPT = True
+continuous = []
+nbins = 5
+excludeother = False
+mapping_dict = mapping_dict
