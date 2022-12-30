@@ -24,7 +24,7 @@ class Snapshot:
     def __init__(
         self,
         profile_data: pd.DataFrame,
-        segment_var: list,
+        segment_var: str,
         baseline: str = "",
         segments: list = [],
         filename: str = "Profile",
@@ -394,13 +394,13 @@ class Snapshot:
                 cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
             # Color scale
-        red = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
-        yellow = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
+        red = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
+        yellow = PatternFill(start_color="00FFCC00", end_color="00FFCC00", fill_type="solid")
         green = PatternFill(start_color="0099CC00", end_color="0099CC00", fill_type="solid")
         # white = PatternFill(start_color="00EEEEEE", end_color="00EEEEEE", fill_type="solid")
 
-        dxf1 = DifferentialStyle(fill=yellow)
-        dxf2 = DifferentialStyle(fill=red)
+        dxf1 = DifferentialStyle(fill=red)
+        dxf2 = DifferentialStyle(fill=yellow)
         dxf3 = DifferentialStyle(fill=green)
         # dxf4 = DifferentialStyle(fill=white)
 
@@ -417,10 +417,10 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
 
-    def create_visual(self, plot_index=True, chart_style=1, show_axes=True) -> None:
+    def create_visual(self, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
 
         self.plot_index = plot_index
-        self.chart_style = chart_style
+        self.data_table = data_table
         self.show_axes = show_axes
 
         profile = self.profile
@@ -520,7 +520,9 @@ class Snapshot:
             # temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
             temp_df.loc[:, "FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
             temp_df = temp_df[temp_df["FLAG"]]
-            temp_df = temp_df[~temp_df["Category"].isin(["NA", "99", 99, "Z"])]
+
+            if not show_na:
+                temp_df = temp_df[~temp_df["Category"].isin(["NA", "99", 99, "Z"])]
 
             if len(temp_df) == 0:
                 # delete that sheet
@@ -614,14 +616,21 @@ class Snapshot:
             if n == 2:
                 return ["003f5c", "ffa600"]
             elif n == 3:
-                return ["003f5c", "e4537d", "ffa600"]
+                return ["003f5c", "bc5090", "ffa600"]
+            elif n == 4:
+                return ["003f5c", "7a5195", "ef5675", "ffa600"]
+            elif n == 5:
+                return ["003f5c", "58508d", "bc5090", "ff6361", "ffa600"]
             else:
-                return ["003f5c", "7a5195", "ef5675", "ffa600", "a56eff", "570408", "1192e8", "d6f599"]
+                box = []
+                while len(box) < n:
+                    box += ["003f5c", "7a5195", "ef5675", "ffa600"]
+                return box[:n]
 
         c1 = BarChart()
         c1.height = 16  # default is 7.5
         c1.width = 30  # default is 15
-        if self.chart_style == 1:
+        if self.data_table:
             c1.plot_area.dTable = DataTable()
             c1.plot_area.dTable.showHorzBorder = True
             c1.plot_area.dTable.showVertBorder = True

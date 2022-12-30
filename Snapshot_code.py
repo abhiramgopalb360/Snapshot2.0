@@ -756,6 +756,7 @@ def Snapshot_Profile(
                                 current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
                             else:
                                 current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
+
             for col in wb.sheetnames:
                 if col == "Sheet":
                     continue
@@ -1032,10 +1033,9 @@ def preprocess(df):
     return df
 
 
-
 #
 #
-df = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_4_group_subsample_20221222.xlsx")
+df = pd.read_excel(r"C:\Users\NahianSiddique\OneDrive - Blend 360\Hilton\Analytical Projects\HGV 2022 VIP Analysis\Data\Model Sample\appended_data_4_group_subsample_20221228.xlsx")
 
 df = df.drop(
     columns=[
