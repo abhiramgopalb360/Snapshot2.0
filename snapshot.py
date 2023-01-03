@@ -113,11 +113,10 @@ class Snapshot:
 
         # binning continuous variable to bins in the binning file
         for variable in varclass.columns[varclass.iloc[0] == "continuous"]:
-            if not self.continuous_var_bounds:
-                self.continuous_var_bounds = dict()
-            if variable.startswith("MT_") or variable.startswith("PROPENSITY_") or variable.startswith("LIKELY_") or variable == "TGT_PRE_MOVER_20_MODEL":
-                continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=[0, 5, 25, 45, 65, 85, 99])
-            elif variable in self.continuous_var_bounds:
+            # TODO: add condition for epsilon
+            # if variable.startswith("MT_") or variable.startswith("PROPENSITY_") or variable.startswith("LIKELY_") or variable == "TGT_PRE_MOVER_20_MODEL":
+            #     continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=[0, 5, 25, 45, 65, 85, 99])
+            if variable in self.continuous_var_bounds:
                 cut_bins = self.continuous_var_bounds[variable]
                 continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=cut_bins)
             else:
@@ -167,7 +166,7 @@ class Snapshot:
             elif ("Percent" in i) & (self.mapping_dict["Baseline"] in i):
                 uscol = i
 
-        for index, row in profile.iterrows():
+        for _, row in profile.iterrows():
             if row["Variable"] not in psi:
                 psi[row["Variable"]] = {}
             if row["Category"] not in psi[row["Variable"]]:
@@ -247,6 +246,47 @@ class Snapshot:
 
         savepath = f"{self.filename}_Profile.xlsx"
         wb.save(savepath)
+
+    def create_visual(self, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
+
+        self.plot_index = plot_index
+        self.data_table = data_table
+        self.show_axes = show_axes
+
+        wb = Workbook()
+
+        profile = self.profile
+
+        def shorten_name(name):
+            if len(name) >= 31:
+                name = name[0:31]
+            return name
+
+        profile["Variable"] = profile["Variable"].apply(lambda x: shorten_name(x))
+
+        for var in profile["Variable"].unique():
+            subset_profile = profile[profile["Variable"] == var]
+
+            if subset_profile.empty:
+                continue
+
+            # create sheet
+            profiling_ws = wb.create_sheet(var, 0)
+            profiling_ws = wb.active
+
+            self.__allformat(profiling_ws, subset_profile)
+            self.__visual(profiling_ws)
+
+        # TODO: format Index page
+        all_var_profiling_ws1 = wb.create_sheet("Index", 0)
+        # make new sheet the active sheet we are working on
+        wb.active = wb["Index"]
+        all_var_profiling_ws1 = wb.active
+        for i in wb.sheetnames:
+            all_var_profiling_ws1.append([i])
+
+        filesave = f"{self.filename}_Chart.xlsx"
+        wb.save(filesave)
 
     def __allformat(self, ws, profile) -> None:
 
@@ -356,6 +396,7 @@ class Snapshot:
         for range1 in ws.merged_cells.ranges:
             style_range(ws, str(range1), border=border)
 
+        # TODO replace counter with enumerate in loop
         y = 0
         for i in input_cols:
             z = 0
@@ -382,10 +423,6 @@ class Snapshot:
 
                 z = z + 1
             y = y + 1
-
-    #     self.__allformat(ws)
-
-    # def __allformat(self, ws) -> None:
 
         char = "C"
         for _ in range(self.num_segments):
@@ -437,47 +474,6 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
-
-    def create_visual(self, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
-
-        self.plot_index = plot_index
-        self.data_table = data_table
-        self.show_axes = show_axes
-
-        wb = Workbook()
-
-        profile = self.profile
-
-        def shorten_name(name):
-            if len(name) >= 31:
-                name = name[0:31]
-            return name
-
-        profile["Variable"] = profile["Variable"].apply(lambda x: shorten_name(x))
-
-        for var in profile["Variable"].unique():
-            subset_profile = profile[profile["Variable"] == var]
-
-            if subset_profile.empty:
-                continue
-
-            # create sheet
-            profiling_ws = wb.create_sheet(var, 0)
-            profiling_ws = wb.active
-
-            self.__allformat(profiling_ws, subset_profile)
-            self.__visual(profiling_ws)
-
-        # TODO: format Index page
-        all_var_profiling_ws1 = wb.create_sheet("Index", 0)
-        # make new sheet the active sheet we are working on
-        wb.active = wb["Index"]
-        all_var_profiling_ws1 = wb.active
-        for i in wb.sheetnames:
-            all_var_profiling_ws1.append([i])
-
-        filesave = f"{self.filename}_Chart.xlsx"
-        wb.save(filesave)
 
     def __visual(self, ws) -> None:
         def color_palette(n):
@@ -546,7 +542,7 @@ class Snapshot:
             c2.y_axis.crosses = "max"
             c1 += c2
 
-        ws.add_chart(c1, "D15")
+        ws.add_chart(c1, f"D{ws.max_row + 5}")
 
     def __merge(self, wb) -> Workbook:
         # Selecting active sheet
@@ -573,6 +569,6 @@ class Snapshot:
 
         return wb
 
-    def preprocess(self) -> None:
+    def __preprocess(self) -> None:
         # TODO add preprocessing for envision and acxiom fields
         self.profile_data = pd.DataFrame(self.profile_data)
