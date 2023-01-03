@@ -76,13 +76,19 @@ class Snapshot:
         df_continuous.dropna(inplace=True)
         # create bin dictionary for run_profiler()
         self.continuous_var_bounds = {}
-        for index, row in df_continuous.iterrows():
+        for _, row in df_continuous.iterrows():
             # Read in the row as string and convert to list of floats
             self.continuous_var_bounds[row["Attribute"]] = [float(i) for i in row["Bin"].split(sep=",")]
 
+        self.categories = {}
+        for _, row in df_continuous.iterrows():
+            # Read in the row as string and convert to list of floats
+            self.categories[row["Snowflake Field names"]] = row["Category"]
+        self.unique_categories = sorted(set(self.categories.values()))
+
     def run_profiler(self) -> None:
 
-        self.preprocess()
+        # self.preprocess()
 
         for col in self.profile_data:
             try:
@@ -137,7 +143,9 @@ class Snapshot:
                 col_order.append("Count " + str(self.mapping_dict[seg]))
                 col_order.append("Percent " + str(self.mapping_dict[seg]))
                 profile = pd.merge(profile, profile_1, on=["Variable", "Category"], how="outer")
-                profile[str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"]] = (profile["Percent " + str(self.mapping_dict[seg])] / profile["Percent " + self.mapping_dict["Baseline"]]) * 100
+                profile[str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"]] = (
+                    profile["Percent " + str(self.mapping_dict[seg])] / profile["Percent " + self.mapping_dict["Baseline"]]
+                ) * 100
                 index_order.append(str(self.mapping_dict[seg]) + " vs " + self.mapping_dict["Baseline"])
 
         profile = profile[col_order + index_order]
@@ -197,26 +205,56 @@ class Snapshot:
             profile[col] = profile[col] / 100
 
         self.profile = profile
+        profile["Category"] = profile["Category"].astype(str)
 
-    def create_profile(self) -> None:
+    def create_profile(self, report=False) -> None:
+
         wb = Workbook()
         del wb["Sheet"]
 
-        profile = self.profile
-        profile["Category"] = profile["Category"].astype(str)
+        if report:
+            for cat in self.unique_categories:
+                snowflake_vars = [key for key, value in self.categories.items() if value == cat]
+                subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
 
-        # create sheet
-        all_var_profiling_ws = wb.create_sheet("Profile", 0)
+                if subset_profile.empty:
+                    continue
 
-        # make new sheet the active sheet we are working on
-        all_var_profiling_ws = wb.active
+                # create sheet
+                profiling_ws = wb.create_sheet(cat, 0)
+                profiling_ws = wb.active
+
+                self.__allformat(profiling_ws, subset_profile)
+
+        else:
+            # create sheet
+            profiling_ws = wb.create_sheet("Profile", 0)
+            profiling_ws = wb.active
+
+            self.__allformat(profiling_ws, self.profile)
+
+        ws2 = wb.create_sheet("Allcategory")
+
+        psi_df = pd.DataFrame(self.overall).transpose().reset_index()
+        psi_df.rename({"index": "Category"}, axis=1, inplace=True)
+
+        rows = dataframe_to_rows(psi_df, index=False)
+        for r_idx, row in enumerate(rows, 1):
+            for c_idx, value in enumerate(row, 1):
+                ws2.cell(row=r_idx, column=c_idx, value=value)
+
+        self.__merge(wb)
+
+        savepath = f"{self.filename}_Profile.xlsx"
+        wb.save(savepath)
+
+    def __allformat(self, ws, profile) -> None:
 
         # remove gridlines from the sheet
-        all_var_profiling_ws.sheet_view.showGridLines = False
+        ws.sheet_view.showGridLines = False
 
         # set border line thickness
         thick = Side(border_style="thick", color="000000")
-        # medium = Side(border_style="medium", color="000000")
         thin = Side(border_style="thin", color="000000")
 
         # get max rows and cols of profiling df
@@ -231,8 +269,8 @@ class Snapshot:
             x = "3"
             x = i + x
 
-            all_var_profiling_ws[x].font = Font(bold=True)
-            current_cell = all_var_profiling_ws[x]
+            ws[x].font = Font(bold=True)
+            current_cell = ws[x]
             current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
 
@@ -243,7 +281,7 @@ class Snapshot:
             else:
                 current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
 
-            all_var_profiling_ws[x] = profile.columns[y]
+            ws[x] = profile.columns[y]
             y = y + 1
 
         counter = []
@@ -257,23 +295,23 @@ class Snapshot:
                 break
 
             if index % 2 == 1:
-                all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
-                all_var_profiling_ws[counter[-1]].font = Font(bold=True)
-                current_cell = all_var_profiling_ws[counter[-1]]
-                current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
+                ws.merge_cells(f"{counter[-1]}:{x}")
+                ws[counter[-1]].font = Font(bold=True)
+                current_cell = ws[counter[-1]]
+                current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                 current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                 continue
 
             if i == "D":
-                all_var_profiling_ws[x] = "BASELINE"
-                all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
+                ws[x] = "BASELINE"
+                ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                 counter.append(x)
                 continue
-            all_var_profiling_ws[x] = "SEGMENT " + str(counter_val)
+            ws[x] = "SEGMENT " + str(counter_val)
             counter_val += 1
             counter.append(x)
-            # all_var_profiling_ws.merge_cells(start_row=2, start_column=5, end_row=2, end_column=5)
-            # all_var_profiling_ws.merge_cells(f'{x}:D2')
+
+        border = Border(top=thick, left=thick, right=thick, bottom=thick)
 
         def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
 
@@ -315,25 +353,23 @@ class Snapshot:
                     for c in row:
                         c.fill = fill
 
-        border = Border(top=thick, left=thick, right=thick, bottom=thick)
-
-        for range1 in all_var_profiling_ws.merged_cells.ranges:
-            style_range(all_var_profiling_ws, str(range1), border=border)
+        for range1 in ws.merged_cells.ranges:
+            style_range(ws, str(range1), border=border)
 
         y = 0
         for i in input_cols:
             z = 0
             for j in input_rows:
-                all_var_profiling_ws.row_dimensions[j].height = 25
+                ws.row_dimensions[j].height = 25
                 x = str(j)
                 x = i + x
-                current_cell = all_var_profiling_ws[x]
+                current_cell = ws[x]
                 current_cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
                 if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                     current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
 
-                all_var_profiling_ws[x] = profile.iloc[z, y]
+                ws[x] = profile.iloc[z, y]
 
                 if y == 0:
                     current_cell.border = Border(top=thin, left=thick, right=thin, bottom=thin)
@@ -347,24 +383,9 @@ class Snapshot:
                 z = z + 1
             y = y + 1
 
-        self.__allformat(all_var_profiling_ws)
+    #     self.__allformat(ws)
 
-        ws2 = wb.create_sheet("Allcategory")
-
-        psi_df = pd.DataFrame(self.overall).transpose().reset_index()
-        psi_df.rename({"index": "Category"}, axis=1, inplace=True)
-
-        rows = dataframe_to_rows(psi_df, index=False)
-        for r_idx, row in enumerate(rows, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws2.cell(row=r_idx, column=c_idx, value=value)
-
-        self.__merge(wb)
-
-        savepath = f"{self.filename}_Profile.xlsx"
-        wb.save(savepath)
-
-    def __allformat(self, ws) -> None:
+    # def __allformat(self, ws) -> None:
 
         char = "C"
         for _ in range(self.num_segments):
@@ -423,182 +444,29 @@ class Snapshot:
         self.data_table = data_table
         self.show_axes = show_axes
 
-        profile = self.profile
-        lcn = str(profile.columns[-1])
-        profile_sliced = profile[profile[lcn] > 0]
         wb = Workbook()
+
+        profile = self.profile
 
         def shorten_name(name):
             if len(name) >= 31:
                 name = name[0:31]
             return name
 
-        profile_sliced[profile_sliced["Variable"] == "VEHICLE_MAKE_4"]
-        profile_sliced["Variable"] = profile_sliced["Variable"].apply(lambda x: shorten_name(x))
-        profile_sliced["Category"] = profile_sliced["Category"].astype(str)
+        profile["Variable"] = profile["Variable"].apply(lambda x: shorten_name(x))
 
-        all_var_profiling_ws = wb.create_sheet(profile_sliced["Variable"].iloc[0], 0)
-        # make new sheet the active sheet we are working on
-        all_var_profiling_ws = wb.active
+        for var in profile["Variable"].unique():
+            subset_profile = profile[profile["Variable"] == var]
 
-        # remove gridlines from the sheet
-        all_var_profiling_ws.sheet_view.showGridLines = False
-
-        # set border line thickness
-        thick = Side(border_style="thick", color="000000")
-        # medium = Side(border_style="medium", color="000000")
-        thin = Side(border_style="thin", color="000000")
-
-        # get max rows and cols of profiling df
-        max_rows = profile_sliced.shape[0]
-        max_cols = profile_sliced.shape[1]
-
-        input_cols = list(string.ascii_uppercase)
-        from openpyxl.utils.dataframe import dataframe_to_rows
-
-        Allrows = dataframe_to_rows(profile)
-
-        for z in range(0, len(profile_sliced)):
-            current_cat = profile["Variable"].iloc[z]
-
-            if z != 0:
-                if profile_sliced["Variable"].iloc[z] != profile_sliced["Variable"].iloc[z - 1]:
-                    # create sheet
-                    all_var_profiling_ws = wb.create_sheet(profile_sliced["Variable"].iloc[z], 0)
-                    # make new sheet the active sheet we are working on
-                    all_var_profiling_ws = wb.active
-
-                    for y in range(len(profile_sliced.columns)):
-                        current_cell = all_var_profiling_ws.cell(row=3, column=y + 2)
-
-                        current_cell.font = Font(bold=True)
-                        current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
-                        current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-                        current_cell.value = profile_sliced.columns[y]
-                        if y == 0:
-                            current_cell.border = Border(top=thick, left=thick, right=thin, bottom=thin)
-                        elif y == max_cols - 1:
-                            current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
-                        else:
-                            current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
-                else:
-                    incol = 2
-                    for y in range(len(profile_sliced.columns)):
-                        current_cell = all_var_profiling_ws.cell(row=3, column=incol)
-                        incol = incol + 1
-                        current_cell.font = Font(bold=True)
-                        current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
-                        current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-                        current_cell.value = profile.columns[y]
-                        if y == 0:
-                            current_cell.border = Border(top=thick, left=thick, right=thin, bottom=thin)
-                        elif y == max_cols - 1:
-                            current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
-                        else:
-                            current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
-
-        del wb["Sheet"]
-        for col in wb.sheetnames:
-            temp_df = profile_sliced.loc[profile_sliced["Variable"] == col, :]
-            # To code for thresold 3%
-            percent_cols = []
-            for i in temp_df.columns:
-                if "Percent" in i:
-                    percent_cols.append(i)
-
-            if sum(temp_df["Category"].isin(["NA", "99", 99, "Z"])):
-                # or min
-                k = (temp_df[temp_df["Category"].isin(["NA"])][percent_cols] >= self.na_drop_threshold).any(axis=1).astype(bool)
-
-                if sum(k):
-                    # delete that sheet
-                    std = wb[col]
-                    wb.remove(std)
-                    # print(f"{std} removed")
-                    continue
-
-            # temp_df["FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
-            temp_df.loc[:, "FLAG"] = (temp_df[percent_cols] >= 0.001).any(axis=1).astype(bool)
-            temp_df = temp_df[temp_df["FLAG"]]
-
-            if not show_na:
-                temp_df = temp_df[~temp_df["Category"].isin(["NA", "99", 99, "Z"])]
-
-            if len(temp_df) == 0:
-                # delete that sheet
-                std = wb[col]
-                wb.remove(std)
-                # print(f"{std} removed")
+            if subset_profile.empty:
                 continue
-            # To code if temp_df contains NA in
 
-            temp_df = temp_df.drop("FLAG", axis=1)
+            # create sheet
+            profiling_ws = wb.create_sheet(var, 0)
+            profiling_ws = wb.active
 
-            #
-            rows = dataframe_to_rows(temp_df)
-            wb.active = wb[col]
-            ws = wb.active
-
-            for r_idx, row in enumerate(rows, 1):
-                for c_idx, value in enumerate(row, 1):
-                    ws.cell(row=r_idx + 1, column=c_idx + 1, value=value)
-                    ws.cell(row=r_idx + 1, column=c_idx + 1).border = Border(top=thin, left=thin, right=thin, bottom=thin)
-
-            all_var_profiling_ws = ws
-            all_var_profiling_ws.move_range("B3:Z3", cols=1)
-            all_var_profiling_ws.delete_rows(2)
-            all_var_profiling_ws.delete_cols(2)
-            all_var_profiling_ws.insert_rows(2)
-
-            counter = []
-            counter_val = 1
-            input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
-
-            for index, i in enumerate(input_cols[2::]):
-                x = "2"
-                x = i + x
-
-                if index >= self.num_segments * 2:
-                    break
-
-                if index % 2 == 1:
-                    all_var_profiling_ws.merge_cells(f"{counter[-1]}:{x}")
-                    all_var_profiling_ws[counter[-1]].font = Font(bold=True)
-                    current_cell = all_var_profiling_ws[counter[-1]]
-                    current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
-                    current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
-                    continue
-
-                if i == "D":
-                    all_var_profiling_ws[x] = "BASELINE"
-                    all_var_profiling_ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
-                    counter.append(x)
-                    continue
-                all_var_profiling_ws[x] = "SEGMENT " + str(counter_val)
-                counter_val += 1
-                counter.append(x)
-
-            # Merge cells A and B test
-            key_column = 2
-            merge_columns = [2]
-            start_row = 4
-            max_row = ws.max_row
-            key = None
-
-            # Iterate all rows in `key_colum`
-            for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
-                if key != row_cells[0].value or row == max_row:
-                    if key is not None:
-                        for merge_column in merge_columns:
-                            ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row, end_column=merge_column)
-                            ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                        start_row = row
-                    key = row_cells[0].value
-                if row == max_row:
-                    row += 1
-
-            self.__visual(ws)
-            self.__allformat(ws)
+            self.__allformat(profiling_ws, subset_profile)
+            self.__visual(profiling_ws)
 
         # TODO: format Index page
         all_var_profiling_ws1 = wb.create_sheet("Index", 0)
