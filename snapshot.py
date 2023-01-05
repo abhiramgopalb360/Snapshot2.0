@@ -1,10 +1,9 @@
-import os
 import string
 import warnings
 
 import numpy as np
 import pandas as pd
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.plotarea import DataTable
@@ -27,7 +26,6 @@ class Snapshot:
         segment_var: str,
         baseline: str = "",
         segments: list = [],
-        filename: str = "Profile",
         continuous_path: str = "",
         nbins: int = 6,
         variable_order: list = [],
@@ -40,7 +38,6 @@ class Snapshot:
 
         self.profile_data = profile_data
         self.segment_var = segment_var
-        self.filename = filename
         self.nbins = nbins
         self.variable_order = variable_order
         self.include = include
@@ -206,33 +203,30 @@ class Snapshot:
         self.profile = profile
         profile["Category"] = profile["Category"].astype(str)
 
-    def create_profile(self, report=False) -> None:
+    def create_profile(self, filename, split_category=False) -> None:
 
         wb = Workbook()
         del wb["Sheet"]
 
-        if report:
-            for cat in self.unique_categories:
+        if split_category:
+            for cat in self.unique_categories[::-1]:
                 snowflake_vars = [key for key, value in self.categories.items() if value == cat]
                 subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
 
                 if subset_profile.empty:
                     continue
 
-                # create sheet
                 profiling_ws = wb.create_sheet(cat, 0)
                 profiling_ws = wb.active
 
                 self.__allformat(profiling_ws, subset_profile)
 
-        else:
-            # create sheet
-            profiling_ws = wb.create_sheet("Profile", 0)
-            profiling_ws = wb.active
+        profiling_ws = wb.create_sheet("Profile", 0)
+        profiling_ws = wb.active
 
-            self.__allformat(profiling_ws, self.profile)
+        self.__allformat(profiling_ws, self.profile)
 
-        ws2 = wb.create_sheet("Allcategory")
+        ws2 = wb.create_sheet("PSI")
 
         psi_df = pd.DataFrame(self.overall).transpose().reset_index()
         psi_df.rename({"index": "Category"}, axis=1, inplace=True)
@@ -242,29 +236,18 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
-        self.__merge(wb)
+        wb.save(filename)
 
-        savepath = f"{self.filename}_Profile.xlsx"
-        wb.save(savepath)
-
-    def create_visual(self, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
-
-        self.plot_index = plot_index
-        self.data_table = data_table
-        self.show_axes = show_axes
+    def create_visual(self, filename, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
 
         wb = Workbook()
+        del wb["Sheet"]
 
         profile = self.profile
 
-        def shorten_name(name):
-            if len(name) >= 31:
-                name = name[0:31]
-            return name
+        profile["Variable"] = profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
 
-        profile["Variable"] = profile["Variable"].apply(lambda x: shorten_name(x))
-
-        for var in profile["Variable"].unique():
+        for var in profile["Variable"].unique()[::-1]:
             subset_profile = profile[profile["Variable"] == var]
 
             if subset_profile.empty:
@@ -274,8 +257,8 @@ class Snapshot:
             profiling_ws = wb.create_sheet(var, 0)
             profiling_ws = wb.active
 
-            self.__allformat(profiling_ws, subset_profile)
-            self.__visual(profiling_ws)
+            self.__allformat(profiling_ws, subset_profile, show_na)
+            self.__visual(profiling_ws, plot_index, data_table, show_axes)
 
         # TODO: format Index page
         all_var_profiling_ws1 = wb.create_sheet("Index", 0)
@@ -285,10 +268,9 @@ class Snapshot:
         for i in wb.sheetnames:
             all_var_profiling_ws1.append([i])
 
-        filesave = f"{self.filename}_Chart.xlsx"
-        wb.save(filesave)
+        wb.save(filename)
 
-    def __allformat(self, ws, profile) -> None:
+    def __allformat(self, ws, profile, show_na=True) -> None:
 
         # remove gridlines from the sheet
         ws.sheet_view.showGridLines = False
@@ -297,6 +279,9 @@ class Snapshot:
         thick = Side(border_style="thick", color="000000")
         thin = Side(border_style="thin", color="000000")
 
+        if not show_na:
+            profile = profile[~profile["Category"].isin(["NA", "99", 99, "Z"])]
+
         # get max rows and cols of profiling df
         max_rows = profile.shape[0]
         max_cols = profile.shape[1]
@@ -304,10 +289,8 @@ class Snapshot:
         input_rows = range(4, max_rows + 4)
         input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
 
-        y = 0
-        for i in input_cols:
-            x = "3"
-            x = i + x
+        for y, i in enumerate(input_cols):
+            x = i + "3"
 
             ws[x].font = Font(bold=True)
             current_cell = ws[x]
@@ -322,14 +305,12 @@ class Snapshot:
                 current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
 
             ws[x] = profile.columns[y]
-            y = y + 1
 
         counter = []
         counter_val = 1
 
         for index, i in enumerate(input_cols[2::]):
-            x = "2"
-            x = i + x
+            x = i + "2"
 
             if index >= self.num_segments * 2:
                 break
@@ -396,21 +377,17 @@ class Snapshot:
         for range1 in ws.merged_cells.ranges:
             style_range(ws, str(range1), border=border)
 
-        # TODO replace counter with enumerate in loop
-        y = 0
-        for i in input_cols:
-            z = 0
-            for j in input_rows:
+        for y, i in enumerate(input_cols):
+            for z, j in enumerate(input_rows):
                 ws.row_dimensions[j].height = 25
-                x = str(j)
-                x = i + x
-                current_cell = ws[x]
+                c = i + str(j)
+                current_cell = ws[c]
                 current_cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
                 if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                     current_cell.border = Border(top=thick, left=thin, right=thin, bottom=thin)
 
-                ws[x] = profile.iloc[z, y]
+                ws[c] = profile.iloc[z, y]
 
                 if y == 0:
                     current_cell.border = Border(top=thin, left=thick, right=thin, bottom=thin)
@@ -421,8 +398,16 @@ class Snapshot:
                     if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                         current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
 
-                z = z + 1
-            y = y + 1
+                # if z == max_rows + 1:
+                #     if y == 0:
+                #         current_cell.border = Border(top=thin, left=thick, right=thin, bottom=thick)
+                #     elif y == max_cols - 1:
+                #         current_cell.border = Border(top=thin, left=thin, right=thick, bottom=thick)
+                #     else:
+                #         current_cell.border = Border(top=thin, left=thin, right=thin, bottom=thick)
+
+        print(j)
+        # self.__merge(ws)
 
         char = "C"
         for _ in range(self.num_segments):
@@ -475,7 +460,9 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
 
-    def __visual(self, ws) -> None:
+        # self.__merge(ws)
+
+    def __visual(self, ws, plot_index, data_table, show_axes) -> None:
         def color_palette(n):
             if n == 2:
                 return ["003f5c", "ffa600"]
@@ -494,7 +481,7 @@ class Snapshot:
         c1 = BarChart()
         c1.height = 16  # default is 7.5
         c1.width = 30  # default is 15
-        if self.data_table:
+        if data_table:
             c1.plot_area.dTable = DataTable()
             c1.plot_area.dTable.showHorzBorder = True
             c1.plot_area.dTable.showVertBorder = True
@@ -517,14 +504,14 @@ class Snapshot:
             c1.shape = 4
             c1.series[seg].graphicalProperties.solidFill = colors[seg]
 
-        if self.show_axes:
+        if show_axes:
             c1.x_axis.title = "Categories"
             c1.y_axis.title = "Percentage"
         c1.y_axis.majorGridlines = None
         c1.title = ws["B4"].value
 
         # Create a second chart
-        if self.plot_index:
+        if plot_index:
             c2 = LineChart()
 
             for seg in range(1, self.num_segments):
@@ -544,30 +531,25 @@ class Snapshot:
 
         ws.add_chart(c1, f"D{ws.max_row + 5}")
 
-    def __merge(self, wb) -> Workbook:
-        # Selecting active sheet
-        ws = wb.active
+    def __merge(self, ws, merge_columns=[2]) -> Workbook:
 
-        # Merge cells A and B test
+        # Merge cells
         key_column = 2
-        merge_columns = [2]
         start_row = 4
-        max_row = ws.max_row
+        max_row = ws.max_row + 1
         key = None
 
-        # Iterate all rows in `key_colum`
+        # Iterate all rows in key_column
         for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
             if key != row_cells[0].value or row == max_row:
                 if key is not None:
                     for merge_column in merge_columns:
                         ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
-                        ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # 1011
+                        ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                     start_row = row
                 key = row_cells[0].value
             if row == max_row:
                 row += 1
-
-        return wb
 
     def __preprocess(self) -> None:
         # TODO add preprocessing for envision and acxiom fields
