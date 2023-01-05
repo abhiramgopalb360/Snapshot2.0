@@ -236,6 +236,7 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
+        # TODO: raise error if save file is not .xlsx
         wb.save(filename)
 
     def create_visual(self, filename, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
@@ -268,6 +269,7 @@ class Snapshot:
         for i in wb.sheetnames:
             all_var_profiling_ws1.append([i])
 
+        # TODO: raise error if save file is not .xlsx
         wb.save(filename)
 
     def __allformat(self, ws, profile, show_na=True) -> None:
@@ -398,17 +400,6 @@ class Snapshot:
                     if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                         current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
 
-                # if z == max_rows + 1:
-                #     if y == 0:
-                #         current_cell.border = Border(top=thin, left=thick, right=thin, bottom=thick)
-                #     elif y == max_cols - 1:
-                #         current_cell.border = Border(top=thin, left=thin, right=thick, bottom=thick)
-                #     else:
-                #         current_cell.border = Border(top=thin, left=thin, right=thin, bottom=thick)
-
-        print(j)
-        # self.__merge(ws)
-
         char = "C"
         for _ in range(self.num_segments):
             char = chr(ord(char) + 2)
@@ -460,7 +451,8 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
 
-        # self.__merge(ws)
+        # merge first column cells
+        self.__merge(ws)
 
     def __visual(self, ws, plot_index, data_table, show_axes) -> None:
         def color_palette(n):
