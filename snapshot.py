@@ -13,8 +13,8 @@ from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.utils.dataframe import dataframe_to_rows
 from vyper.utils.tools import StatisticalTools as st
 
+import preprocessing
 from explorer import DataProfiler  # 100522 customized explorer
-
 
 warnings.simplefilter(action="ignore", category=pd.core.common.SettingWithCopyWarning)
 
@@ -34,6 +34,8 @@ class Snapshot:
         continuous: list = [],
         exclude_other: bool = False,
         na_drop_threshold: float = 0.95,
+        epsilon: bool = True,
+        acxiom: bool = True,
     ) -> None:
 
         self.profile_data = profile_data
@@ -44,7 +46,10 @@ class Snapshot:
         self.exclude = exclude
         self.continuous = continuous
         self.exclude_other = exclude_other
+        # TODO: add logic to drop variables above na_drop_threshold
         self.na_drop_threshold = na_drop_threshold
+        self.epsilon = epsilon
+        self.acxiom = acxiom
 
         if not segments:
             segments = profile_data[segment_var].unique().tolist()
@@ -544,5 +549,10 @@ class Snapshot:
                 row += 1
 
     def __preprocess(self) -> None:
-        # TODO add preprocessing for envision and acxiom fields
         self.profile_data = pd.DataFrame(self.profile_data)
+
+        if self.epsilon:
+            self.profile_data = preprocessing.epsilon_preprocess(self.profile_data)
+        elif self.acxiom:
+            # TODO add preprocessing for acxiom
+            pass
