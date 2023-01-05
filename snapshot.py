@@ -73,6 +73,7 @@ class Snapshot:
                 self.mapping_dict[f"Segment_{i}"] = seg
 
         # get custom bounds for continuous vars
+        # TODO: add exception if no or invalid path provided
         df_continuous = pd.read_csv(continuous_path)
         # Drop variables that do not have pre-defined bins
         df_continuous.dropna(inplace=True)
@@ -205,8 +206,78 @@ class Snapshot:
         for col in profile.columns[profile.columns.str.contains("Percent")]:
             profile[col] = profile[col] / 100
 
-        self.profile = profile
         profile["Category"] = profile["Category"].astype(str)
+        self.profile = profile
+
+        if self.epsilon:
+            self.add_extra()
+
+    def add_extra(self) -> None:
+
+        profile = self.profile.copy(deep=True)
+
+        Field_dict = pd.read_excel("Data/Epsilon_Final.xlsx")
+        Field_dict = Field_dict.loc[:, "NAME":"Category"]
+        Field_dict["NAME"].fillna(method="ffill", inplace=True)
+        Field_dict["Snowflake"].fillna(method="ffill", inplace=True)
+        Field_dict["Value"].fillna("", inplace=True)
+        Field_dict.columns = ["NAME", "Description", "RATEID", "Value", "Value Description", "Current Count", "Current %", "Snowflake", "Category"]
+        # Confirm numpy is imported
+
+        prev_dict = {}
+
+        def toDict(Field, Value, VD, snowflake, FDdescription):
+
+            if Value == "":
+                return 0
+
+            if snowflake not in prev_dict:
+                prev_dict[snowflake] = {}
+                prev_dict[snowflake]["Field"] = Field
+                prev_dict[snowflake]["Field Description"] = FDdescription
+            if Value not in prev_dict[snowflake]:
+                prev_dict[snowflake][Value] = {}
+            prev_dict[snowflake][Value]["desp"] = VD
+            # prev_dict[snowflake][Value]['Current Count'] =  CC
+            # prev_dict[snowflake][Value]['Current %'] = CP
+            return prev_dict
+
+        # Add the Field Name
+        def addFieldName(x):
+            if x in prev_dict.keys():
+                return prev_dict[x]["Field"]
+
+        profile.insert(1, "Label", "")
+        profile["Label"] = profile["Variable"].apply(lambda x: addFieldName(x))
+
+        # Add Field Description
+        def addFieldDesc(x):
+            if x in prev_dict.keys():
+                return prev_dict[x]["Field Description"]
+
+        profile.insert(2, "Definition", "")
+        profile["Definition"] = profile["Variable"].apply(lambda x: addFieldDesc(x))
+
+        # Add Value Description
+        def addValuedescription(snowflake, value):
+            if snowflake in prev_dict.keys():
+                if value in prev_dict[snowflake].keys():
+                    return prev_dict[snowflake][value]["desp"]
+                elif snowflake.startswith("MT_") or snowflake.startswith("PROPENSITY_") or snowflake.startswith("LIKELY_") or snowflake == "TGT_PRE_MOVER_20_MODEL":
+                    return prev_dict[snowflake][str(value)]["desp"]
+                else:
+                    try:
+                        value = int(value)
+                        if value in prev_dict[snowflake].keys():
+                            return prev_dict[snowflake][value]["desp"]
+                    except Exception:
+                        pass
+
+        profile.insert(4, "Description", "")
+        profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], x["Category"]), axis=1)
+        # print(prev_dict['ETHNIC_GROUP_CODE3'])
+
+        self.profile_extra = profile
 
     def create_profile(self, filename, split_category=False) -> None:
 
@@ -249,7 +320,7 @@ class Snapshot:
         wb = Workbook()
         del wb["Sheet"]
 
-        profile = self.profile
+        profile = self.profile.copy(deep=True)
 
         profile["Variable"] = profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
 
@@ -528,7 +599,7 @@ class Snapshot:
 
         ws.add_chart(c1, f"D{ws.max_row + 5}")
 
-    def __merge(self, ws, merge_columns=[2]) -> Workbook:
+    def __merge(self, ws, merge_columns=[2]) -> None:
 
         # Merge cells
         key_column = 2
