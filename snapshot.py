@@ -90,7 +90,7 @@ class Snapshot:
 
     def run_profiler(self) -> None:
 
-        # self.preprocess()
+        self.__preprocess()
 
         for col in self.profile_data:
             try:
