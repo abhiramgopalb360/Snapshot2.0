@@ -34,8 +34,8 @@ class Snapshot:
         continuous: list = [],
         exclude_other: bool = False,
         na_drop_threshold: float = 0.95,
-        epsilon: bool = True,
-        acxiom: bool = True,
+        epsilon: bool = False,
+        acxiom: bool = False,
     ) -> None:
 
         self.profile_data = profile_data
@@ -275,7 +275,6 @@ class Snapshot:
 
         profile.insert(4, "Description", "")
         profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], x["Category"]), axis=1)
-        # print(prev_dict['ETHNIC_GROUP_CODE3'])
 
         self.profile_extra = profile
 
@@ -287,7 +286,11 @@ class Snapshot:
         if split_category:
             for cat in self.unique_categories[::-1]:
                 snowflake_vars = [key for key, value in self.categories.items() if value == cat]
-                subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
+                if self.epsilon:
+                    self.add_extra()
+                    subset_profile = self.profile_extra[self.profile_extra["Variable"].isin(snowflake_vars)]
+                else:
+                    subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
 
                 if subset_profile.empty:
                     continue
