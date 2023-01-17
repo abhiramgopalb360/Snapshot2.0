@@ -568,8 +568,8 @@ class Snapshot:
 
         for seg in range(self.num_segments):
             x1 = seg * 2 + 5
-            data = Reference(ws, min_col=x1, min_row=3, max_row=ws.max_row, max_col=x1)
-            cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+            data = Reference(ws, min_col=x1, min_row=3, max_col=x1, max_row=ws.max_row - 1)
+            cats = Reference(ws, min_col=3, min_row=4, max_col=3, max_row=ws.max_row - 1)
             c1.add_data(data, titles_from_data=True)
             c1.set_categories(cats)
             c1.shape = 4
@@ -600,7 +600,7 @@ class Snapshot:
             c2.y_axis.crosses = "max"
             c1 += c2
 
-        ws.add_chart(c1, f"D{ws.max_row + 5}")
+        ws.add_chart(c1, f"B{ws.max_row + 5}")
 
     def __merge(self, ws, merge_columns=[2]) -> None:
 

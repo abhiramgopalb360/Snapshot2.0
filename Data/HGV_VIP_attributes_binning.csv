@@ -72,7 +72,7 @@ hs_avg_night_rate_1yr,Hilton Stays,hs_avg_night_rate_1yr,1,"0,100,150,200,100000
 hs_avg_room_rate_1yr,Hilton Stays,hs_avg_room_rate_1yr,1,"0,100,150,200,1000000"
 hs_avg_room_nights_1yr,Hilton Stays,hs_avg_room_nights_1yr,1,"0,1,2,3,1000000"
 hs_total_stays_1yr,Hilton Stays,hs_total_stays_1yr,1,"0,1,5,10,15,10000"
-hs_avg_booked_to_arrive_1yr,Hilton Stays,hs_avg_booked_to_arrive_1yr,1,"0,1,7,15,30,10000"
+hs_avg_booked_to_arrive_1yr,Hilton Stays,hs_avg_booked_to_arrive_1yr,1,"-1,1,7,15,30,10000"
 hs_sum_nights_1yr,Hilton Stays,hs_sum_nights_1yr,1,"0,5,10,25,10000"
 hs_max_party_size_1yr,Hilton Stays,hs_max_party_size_1yr,1,"1,2,3,10000"
 hs_sum_nights_3plus_1yr,Hilton Stays,hs_sum_nights_3plus_1yr,1,"0,1,5,15,10000"
