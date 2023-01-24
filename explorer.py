@@ -34,7 +34,7 @@ class DataProfiler:
                        blanks_as_na: bool = True,
                        add_missing_rate: bool = False,
                        ) -> pd.DataFrame:
-        
+
         if not self.variables:
             for col in self.data.columns:
                 if col != self.dependent_variable:
@@ -58,7 +58,7 @@ class DataProfiler:
                         self.variables[col] = Variable(name=col,
                                                     kind=st.classify_variable(self.data[col],
                                                                                 max_values=max_vals,
-                                                                                max_categories=max_cats))                                                        
+                                                                                max_categories=max_cats))
         if not cts_cuts:
             cts_cuts = dict()
         result_dfs = []
@@ -93,7 +93,7 @@ class DataProfiler:
                     all_cuts = self.data[variable.name].value_counts()
                     _sub_df = self.data[selection]
                     if blanks_as_na:
-                        _sub_df[variable.name] = _sub_df[variable.name].fillna('NA')
+                        _sub_df.loc[:, variable.name] = _sub_df[variable.name].fillna('NA')
                     if max_cats < len(all_cuts):
                         cats_to_flip = all_cuts.index[max_cats:].to_numpy()
                         _sub_df['cut_up_variable'] = _sub_df[variable.name]. \
