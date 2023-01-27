@@ -227,6 +227,11 @@ class Snapshot:
         prev_dict = {}
 
         def toDict(Field, Value, VD, snowflake, FDdescription):
+            Field = str(Field)
+            Value = str(Value)
+            VD = str(VD)
+            snowflake = str(snowflake)
+            FDdescription = str(FDdescription)
 
             if Value == "":
                 return 0
@@ -242,6 +247,7 @@ class Snapshot:
             # prev_dict[snowflake][Value]['Current %'] = CP
             return prev_dict
 
+        Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
         # Add the Field Name
         def addFieldName(x):
             if x in prev_dict.keys():
@@ -260,21 +266,25 @@ class Snapshot:
 
         # Add Value Description
         def addValuedescription(snowflake, value):
-            if snowflake in prev_dict.keys():
-                if value in prev_dict[snowflake].keys():
-                    return prev_dict[snowflake][value]["desp"]
-                elif snowflake.startswith("MT_") or snowflake.startswith("PROPENSITY_") or snowflake.startswith("LIKELY_") or snowflake == "TGT_PRE_MOVER_20_MODEL":
-                    return prev_dict[snowflake][str(value)]["desp"]
-                else:
-                    try:
-                        value = int(value)
-                        if value in prev_dict[snowflake].keys():
-                            return prev_dict[snowflake][value]["desp"]
-                    except Exception:
-                        pass
+
+            try:
+                if snowflake in prev_dict.keys():
+                    if value in prev_dict[snowflake].keys():
+                        return prev_dict[snowflake][value]["desp"]
+                    elif snowflake.startswith("MT_") or snowflake.startswith("PROPENSITY_") or snowflake.startswith("LIKELY_") or snowflake == "TGT_PRE_MOVER_20_MODEL":
+                        return prev_dict[snowflake][str(value)]["desp"]
+                    else:
+                        try:
+                            value = int(value)
+                            if value in prev_dict[snowflake].keys():
+                                return prev_dict[snowflake][value]["desp"]
+                        except Exception:
+                            pass
+            except:
+                pass
 
         profile.insert(4, "Description", "")
-        profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], x["Category"]), axis=1)
+        profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], str(x["Category"])), axis=1)
 
         self.profile_extra = profile
 
@@ -588,8 +598,9 @@ class Snapshot:
             for seg in range(1, self.num_segments):
                 x2 = seg + x1
 
-                data = Reference(ws, min_col=x2, min_row=3, max_row=ws.max_row, max_col=x2)
-                cats = Reference(ws, min_col=3, min_row=4, max_row=ws.max_row, max_col=3)
+                data = Reference(ws, min_col=x2, min_row=3, max_col=x2, max_row=ws.max_row - 1)
+                cats = Reference(ws, min_col=3, min_row=4, max_col=3, max_row=ws.max_row - 1)
+
                 c2.add_data(data, titles_from_data=True)
                 c2.set_categories(cats)
 
