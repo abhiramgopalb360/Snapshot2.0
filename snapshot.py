@@ -213,9 +213,11 @@ class Snapshot:
         self.profile = profile
 
         if self.epsilon:
-            self.add_extra()
+            self.__add_extra()
 
-    def add_extra(self) -> None:
+    def __add_extra(self) -> None:
+
+        # TODO: swap description and category positions
 
         profile = self.profile.copy(deep=True)
 
@@ -251,6 +253,7 @@ class Snapshot:
             return prev_dict
 
         Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
+
         # Add the Field Name
         def addFieldName(x):
             if x in prev_dict.keys():
@@ -283,7 +286,7 @@ class Snapshot:
                                 return prev_dict[snowflake][value]["desp"]
                         except Exception:
                             pass
-            except:
+            except Exception:
                 pass
 
         profile.insert(4, "Description", "")
@@ -300,7 +303,6 @@ class Snapshot:
             for cat in self.unique_categories[::-1]:
                 snowflake_vars = [key for key, value in self.categories.items() if value == cat]
                 if self.epsilon:
-                    self.add_extra()
                     subset_profile = self.profile_extra[self.profile_extra["Variable"].isin(snowflake_vars)]
                 else:
                     subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
@@ -315,12 +317,12 @@ class Snapshot:
 
         profiling_ws = wb.create_sheet("Profile", 0)
         profiling_ws = wb.active
+
         if self.epsilon:
-            self.add_extra()
             final_profile = self.profile_extra
         else:
             final_profile = self.profile
-        
+
         self.__allformat(profiling_ws, final_profile)
 
         ws2 = wb.create_sheet("PSI")
@@ -341,15 +343,12 @@ class Snapshot:
         wb = Workbook()
         del wb["Sheet"]
 
-
         if self.epsilon:
             profile = self.profile_extra.copy(deep=True)
         else:
             profile = self.profile.copy(deep=True)
 
         profile["Variable"] = profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
-
-        
 
         for var in profile["Variable"].unique()[::-1]:
             subset_profile = profile[profile["Variable"] == var]
@@ -376,8 +375,6 @@ class Snapshot:
         wb.save(filename)
 
     def __allformat(self, ws, profile, show_na=True) -> None:
-        
-
 
         # remove gridlines from the sheet
         ws.sheet_view.showGridLines = False
@@ -392,6 +389,7 @@ class Snapshot:
         # get max rows and cols of profiling df
         max_rows = profile.shape[0]
         max_cols = profile.shape[1]
+        self.extra_cols = max_cols - (self.num_segments * 3) - 1
 
         input_rows = range(4, max_rows + 4)
         input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
@@ -416,13 +414,7 @@ class Snapshot:
         counter = []
         counter_val = 1
 
-        if self.epsilon:
-            start_cols = input_cols[5::]
-        else:
-            start_cols = input_cols[2::]
-
-
-        for index, i in enumerate(start_cols):
+        for index, i in enumerate(input_cols[2 + self.extra_cols::]):
             x = i + "2"
 
             if index >= self.num_segments * 2:
@@ -435,30 +427,15 @@ class Snapshot:
                 current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                 current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                 continue
-            
-            if self.epsilon:
 
-                if i == "G":
-                    ws[x] = "BASELINE"
-                    ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
-                    counter.append(x)
-                    continue
-                    
-                ws[x] = "SEGMENT " + str(counter_val)
-                counter_val += 1
-                counter.append(x)
-                continue
-            
-            if i == "D":
+            if index == 0:
                 ws[x] = "BASELINE"
-                ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                 counter.append(x)
                 continue
-                    
+
             ws[x] = "SEGMENT " + str(counter_val)
             counter_val += 1
             counter.append(x)
-
 
         border = Border(top=thick, left=thick, right=thick, bottom=thick)
 
@@ -525,10 +502,8 @@ class Snapshot:
                     current_cell.border = Border(top=thin, left=thin, right=thick, bottom=thin)
                     if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                         current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
-        if self.epsilon:
-            char = "F"
-        else:
-            char = "C"
+
+        char = chr(ord("C") + self.extra_cols)
         for _ in range(self.num_segments):
             char = chr(ord(char) + 2)
             for col in ws[char]:
@@ -545,13 +520,8 @@ class Snapshot:
         for c in range(ord("D"), ord(char) + 1):
             ws.column_dimensions[chr(c)].width = 16
 
-        # Headers Alignment
-        for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
-            for cell in row:
-                cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-        # Columns
-        for row in ws.iter_rows(min_col=2, max_col=14):
+        # Columns Alignment
+        for row in ws.iter_rows(min_col=2, max_col=max_cols + 1):
             for cell in row:
                 cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
@@ -580,8 +550,8 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule3)
 
         # merge first column cells
-        if self.epsilon:
-            self.__merge(ws,merge_columns=[2,3,4])
+        if self.extra_cols > 0:
+            self.__merge(ws, merge_columns=list(range(2, 2 + self.extra_cols)))
         else:
             self.__merge(ws)
 
@@ -619,9 +589,9 @@ class Snapshot:
         colors = color_palette(self.num_segments)
 
         for seg in range(self.num_segments):
-            x1 = seg * 2 + 5
+            x1 = (seg * 2) + 5 + self.extra_cols
             data = Reference(ws, min_col=x1, min_row=3, max_col=x1, max_row=ws.max_row - 1)
-            cats = Reference(ws, min_col=3, min_row=4, max_col=3, max_row=ws.max_row - 1)
+            cats = Reference(ws, min_col=3 + self.extra_cols, min_row=4, max_col=3 + self.extra_cols, max_row=ws.max_row - 1)
             c1.add_data(data, titles_from_data=True)
             c1.set_categories(cats)
             c1.shape = 4
