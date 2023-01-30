@@ -289,7 +289,7 @@ class Snapshot:
             except Exception:
                 pass
 
-        profile.insert(4, "Description", "")
+        profile.insert(3, "Description", "")
         profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], str(x["Category"])), axis=1)
 
         self.profile_extra = profile
