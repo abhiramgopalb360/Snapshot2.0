@@ -248,6 +248,7 @@ class Snapshot:
             return prev_dict
 
         Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
+
         # Add the Field Name
         def addFieldName(x):
             if x in prev_dict.keys():
@@ -280,7 +281,7 @@ class Snapshot:
                                 return prev_dict[snowflake][value]["desp"]
                         except Exception:
                             pass
-            except:
+            except Exception:
                 pass
 
         profile.insert(4, "Description", "")
@@ -376,6 +377,7 @@ class Snapshot:
         # get max rows and cols of profiling df
         max_rows = profile.shape[0]
         max_cols = profile.shape[1]
+        extra_cols = max_cols - (self.num_segments * 3) - 1
 
         input_rows = range(4, max_rows + 4)
         input_cols = list(string.ascii_uppercase)[1: max_cols + 1]
@@ -400,7 +402,7 @@ class Snapshot:
         counter = []
         counter_val = 1
 
-        for index, i in enumerate(input_cols[2::]):
+        for index, i in enumerate(input_cols[2 + extra_cols::]):
             x = i + "2"
 
             if index >= self.num_segments * 2:
@@ -414,11 +416,11 @@ class Snapshot:
                 current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                 continue
 
-            if i == "D":
+            if index == 0:
                 ws[x] = "BASELINE"
-                ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                 counter.append(x)
                 continue
+
             ws[x] = "SEGMENT " + str(counter_val)
             counter_val += 1
             counter.append(x)
@@ -489,7 +491,7 @@ class Snapshot:
                     if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                         current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
 
-        char = "C"
+        char = chr(ord("C") + extra_cols)
         for _ in range(self.num_segments):
             char = chr(ord(char) + 2)
             for col in ws[char]:
@@ -507,14 +509,14 @@ class Snapshot:
             ws.column_dimensions[chr(c)].width = 16
 
         # Headers Alignment
-        for row in ws.iter_rows(min_col=2, max_col=11, min_row=3, max_row=3):
+        for row in ws.iter_rows(min_col=2, max_col=max_cols + 1):
             for cell in row:
                 cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
         # Columns
-        for row in ws.iter_rows(min_col=2, max_col=14):
-            for cell in row:
-                cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+        # for row in ws.iter_rows(min_col=2, max_col=max_cols + 1):
+        #     for cell in row:
+        #         cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
             # Color scale
         red = PatternFill(start_color="00FF0000", end_color="00FF0000", fill_type="solid")
@@ -541,7 +543,10 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule3)
 
         # merge first column cells
-        self.__merge(ws)
+        if extra_cols > 0:
+            self.__merge(ws, merge_columns=list(range(2, 2 + extra_cols)))
+        else:
+            self.__merge(ws)
 
     def __visual(self, ws, plot_index, data_table, show_axes) -> None:
         def color_palette(n):
