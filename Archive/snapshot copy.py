@@ -341,15 +341,9 @@ class Snapshot:
         wb = Workbook()
         del wb["Sheet"]
 
-
-        if self.epsilon:
-            profile = self.profile_extra.copy(deep=True)
-        else:
-            profile = self.profile.copy(deep=True)
+        profile = self.profile.copy(deep=True)
 
         profile["Variable"] = profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
-
-        
 
         for var in profile["Variable"].unique()[::-1]:
             subset_profile = profile[profile["Variable"] == var]
@@ -416,13 +410,8 @@ class Snapshot:
         counter = []
         counter_val = 1
 
-        if self.epsilon:
-            start_cols = input_cols[5::]
-        else:
-            start_cols = input_cols[2::]
 
-
-        for index, i in enumerate(start_cols):
+        for index, i in enumerate(input_cols[2::]):
             x = i + "2"
 
             if index >= self.num_segments * 2:
@@ -435,30 +424,15 @@ class Snapshot:
                 current_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                 current_cell.fill = PatternFill("solid", fgColor="A9C4FE")
                 continue
-            
-            if self.epsilon:
 
-                if i == "G":
-                    ws[x] = "BASELINE"
-                    ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
-                    counter.append(x)
-                    continue
-                    
-                ws[x] = "SEGMENT " + str(counter_val)
-                counter_val += 1
-                counter.append(x)
-                continue
-            
             if i == "D":
                 ws[x] = "BASELINE"
                 ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=5)
                 counter.append(x)
                 continue
-                    
             ws[x] = "SEGMENT " + str(counter_val)
             counter_val += 1
             counter.append(x)
-
 
         border = Border(top=thick, left=thick, right=thick, bottom=thick)
 
@@ -525,10 +499,8 @@ class Snapshot:
                     current_cell.border = Border(top=thin, left=thin, right=thick, bottom=thin)
                     if profile["Variable"].iloc[z] != profile["Variable"].iloc[z - 1]:
                         current_cell.border = Border(top=thick, left=thin, right=thick, bottom=thin)
-        if self.epsilon:
-            char = "F"
-        else:
-            char = "C"
+
+        char = "C"
         for _ in range(self.num_segments):
             char = chr(ord(char) + 2)
             for col in ws[char]:
@@ -580,10 +552,7 @@ class Snapshot:
         ws.conditional_formatting.add(rule_string, rule3)
 
         # merge first column cells
-        if self.epsilon:
-            self.__merge(ws,merge_columns=[2,3,4])
-        else:
-            self.__merge(ws)
+        self.__merge(ws)
 
     def __visual(self, ws, plot_index, data_table, show_axes) -> None:
         def color_palette(n):
