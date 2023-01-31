@@ -1,5 +1,25 @@
 def epsilon_preprocess(df):
 
+    def propensity_binning(x):
+        if x >= 0 and x <= 5:
+            return 1
+        elif x > 5 and x <= 25:
+            return 2
+        elif x > 25 and x <= 45:
+            return 3
+        elif x > 45 and x <= 65:
+            return 4
+        elif x > 65 and x <= 85:
+            return 5
+        elif x > 85 and x <= 99:
+            return 6
+        else:
+            return 99
+
+    for col in df.columns:
+        if col.startswith("MT_") or col.startswith("PROPENSITY_") or col.startswith("LIKELY_") or col == "TGT_PRE_MOVER_20_MODEL":
+            df[col] = df[col].apply(propensity_binning)
+
     # INDIVIDUAL_EXACT_AGE1 -> SS_INDIVIDUAL_EXACT_AGE1
     def age_binning(x):
         if x >= 18 and x <= 24:

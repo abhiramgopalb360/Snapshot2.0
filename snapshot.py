@@ -16,56 +16,50 @@ from vyper.utils.tools import StatisticalTools as st
 import preprocessing
 from explorer import DataProfiler  # 100522 customized explorer
 
-warnings.simplefilter(action="ignore", category=pd.core.common.SettingWithCopyWarning)
+warnings.filterwarnings("ignore")
 
 
 class Snapshot:
     def __init__(
         self,
         profile_data: pd.DataFrame,
-        segment_var: str,
+        segment_col: str,
         baseline: str = "",
         segments: list = [],
         bins_path: str = "",
+        dictionary_path: str = "",
         nbins: int = 6,
-        variable_order: list = [],
-        include: list = [],
-        exclude: list = [],
-        continuous: list = [],
-        exclude_other: bool = False,
         na_drop_threshold: float = 0.95,
+        include: list = [],
+        continuous: list = [],
+        description: bool = False,
         epsilon: bool = False,
         acxiom: bool = False,
-        dictionary_path: str = ""
     ) -> None:
 
         self.profile_data = profile_data
-        self.segment_var = segment_var
+        self.segment_col = segment_col
+        self.dictionary_path = dictionary_path
         self.nbins = nbins
-        self.variable_order = variable_order
+        self.na_drop_threshold = na_drop_threshold    # TODO: add logic to drop variables above na_drop_threshold
         self.include = include
-        self.exclude = exclude
-        self.bins_path = bins_path
         self.continuous = continuous
-        self.exclude_other = exclude_other
-        # TODO: add logic to drop variables above na_drop_threshold
-        self.na_drop_threshold = na_drop_threshold
+        self.description = description    # TODO: will be set by dictionary path
         self.epsilon = epsilon
         self.acxiom = acxiom
-        self.dictionary_path = dictionary_path
 
         if not segments:
-            segments = profile_data[segment_var].unique().tolist()
+            segments = profile_data[segment_col].unique().tolist()
         else:
-            all_segs = profile_data[segment_var].unique().tolist()
+            all_segs = profile_data[segment_col].unique().tolist()
             for seg in segments:
                 if seg not in all_segs:
-                    raise ValueError(f"Segment '{seg}' not in '{segment_var}'")
+                    raise ValueError(f"Segment '{seg}' not in '{segment_col}'")
         self.num_segments = len(segments)
 
         if baseline:
             if baseline not in segments:
-                raise ValueError(f"Baseline '{baseline}' not in '{segment_var}'")
+                raise ValueError(f"Baseline '{baseline}' not in '{segment_col}'")
             segments.insert(0, segments.pop(segments.index(baseline)))
 
         self.mapping_dict = {}
@@ -107,21 +101,14 @@ class Snapshot:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(self.profile_data[col])], columns=[col])], axis=1)
         varclass[varclass.columns in self.continuous] = "continuous"
 
-        if self.include:
-            self.exclude = varclass.columns[varclass.columns not in self.include]
-        # Variables to exclude
-        varclass[varclass.columns in self.exclude] = "exclude"
+        # TODO: check what this does
+        varclass[varclass.columns in []] = "exclude"
 
-        if self.exclude_other:
-            varclass[varclass.columns == "Categorical+other"] = "exclude"
         continuous_var_cuts = dict()
         self.varclass = varclass
 
         # binning continuous variable to bins in the binning file
         for variable in varclass.columns[varclass.iloc[0] == "continuous"]:
-            # TODO: add condition for epsilon
-            # if variable.startswith("MT_") or variable.startswith("PROPENSITY_") or variable.startswith("LIKELY_") or variable == "TGT_PRE_MOVER_20_MODEL":
-            #     continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=[0, 5, 25, 45, 65, 85, 99])
             if variable in self.continuous_var_bounds:
                 cut_bins = self.continuous_var_bounds[variable]
                 continuous_var_cuts[variable] = pd.cut(self.profile_data[variable], bins=cut_bins)
@@ -130,10 +117,9 @@ class Snapshot:
 
         col_order = []
         index_order = []
-        # TODO: array([2, 0, 1]) Always encode 0 as US
-        # Change the US population as BASELINE
+
         for seg in np.sort(list(self.mapping_dict.keys())):
-            profile_1 = DataProfiler(self.profile_data[self.profile_data[self.segment_var] == self.mapping_dict[seg]]).create_profile(
+            profile_1 = DataProfiler(self.profile_data[self.profile_data[self.segment_col] == self.mapping_dict[seg]]).create_profile(
                 number_of_bins=self.nbins, cts_cuts=continuous_var_cuts
             )
 
@@ -212,12 +198,10 @@ class Snapshot:
         profile["Category"] = profile["Category"].astype(str)
         self.profile = profile
 
-        if self.epsilon:
-            self.__add_extra()
+        if self.description:
+            self.__add_description()
 
-    def __add_extra(self) -> None:
-
-        # TODO: swap description and category positions
+    def __add_description(self) -> None:
 
         profile = self.profile.copy(deep=True)
 
@@ -227,7 +211,6 @@ class Snapshot:
         Field_dict["Snowflake"].fillna(method="ffill", inplace=True)
         Field_dict["Value"].fillna("", inplace=True)
         Field_dict.columns = ["NAME", "Description", "RATEID", "Value", "Value Description", "Current Count", "Current %", "Snowflake", "Category"]
-        # Confirm numpy is imported
 
         prev_dict = {}
 
@@ -302,7 +285,7 @@ class Snapshot:
         if split_category:
             for cat in self.unique_categories[::-1]:
                 snowflake_vars = [key for key, value in self.categories.items() if value == cat]
-                if self.epsilon:
+                if self.description:
                     subset_profile = self.profile_extra[self.profile_extra["Variable"].isin(snowflake_vars)]
                 else:
                     subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
@@ -318,7 +301,7 @@ class Snapshot:
         profiling_ws = wb.create_sheet("Profile", 0)
         profiling_ws = wb.active
 
-        if self.epsilon:
+        if self.description:
             final_profile = self.profile_extra
         else:
             final_profile = self.profile
@@ -343,7 +326,7 @@ class Snapshot:
         wb = Workbook()
         del wb["Sheet"]
 
-        if self.epsilon:
+        if self.description:
             profile = self.profile_extra.copy(deep=True)
         else:
             profile = self.profile.copy(deep=True)
@@ -566,10 +549,7 @@ class Snapshot:
             elif n == 5:
                 return ["003f5c", "58508d", "bc5090", "ff6361", "ffa600"]
             else:
-                box = []
-                while len(box) < n:
-                    box += ["003f5c", "7a5195", "ef5675", "ffa600"]
-                return box[:n]
+                return (color_palette(4) * -(-n // 4))[:n]
 
         c1 = BarChart()
         c1.height = 16  # default is 7.5
