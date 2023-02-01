@@ -42,9 +42,9 @@ class Snapshot:
         self.dictionary_path = dictionary_path
         self.nbins = nbins
         self.na_drop_threshold = na_drop_threshold    # TODO: add logic to drop variables above na_drop_threshold
-        self.include = include
+        self.include = include                        # TODO: add funtionality to force include variable
         self.continuous = continuous
-        self.description = description    # TODO: will be set by dictionary path
+        self.description = description                # TODO: change to be set True by dictionary path
         self.epsilon = epsilon
         self.acxiom = acxiom
 
@@ -99,14 +99,12 @@ class Snapshot:
         varclass = pd.DataFrame()
         for col in self.profile_data.columns:
             varclass = pd.concat([varclass.reset_index(drop=True), pd.DataFrame([st.classify_variable(self.profile_data[col])], columns=[col])], axis=1)
-        varclass[varclass.columns in self.continuous] = "continuous"
 
-        # TODO: check what this does
-        varclass[varclass.columns in []] = "exclude"
+        for col in varclass.columns:
+            if col in self.continuous:
+                varclass[col] = "continuous"
 
         continuous_var_cuts = dict()
-        self.varclass = varclass
-
         # binning continuous variable to bins in the binning file
         for variable in varclass.columns[varclass.iloc[0] == "continuous"]:
             if variable in self.continuous_var_bounds:
@@ -275,6 +273,7 @@ class Snapshot:
         profile.insert(3, "Description", "")
         profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], str(x["Category"])), axis=1)
 
+        # TODO: change to self.profile
         self.profile_extra = profile
 
     def create_profile(self, filename, split_category=False) -> None:
@@ -524,19 +523,33 @@ class Snapshot:
         rule3 = Rule(type="cellIs", operator="between", formula=[115.0, 1000000.0], dxf=dxf3)
         # rule4 = Rule(type="cellIs", operator="equal", formula=[0], dxf=dxf4)
 
-        final_row = ws.max_row
-
-        rule_string = f"{start}4:{char}{final_row}"
+        rule_string = f"{start}4:{char}{ws.max_row}"
 
         ws.conditional_formatting.add(rule_string, rule1)
         ws.conditional_formatting.add(rule_string, rule2)
         ws.conditional_formatting.add(rule_string, rule3)
 
-        # merge first column cells
+        # merge column cells
         if self.extra_cols > 0:
-            self.__merge(ws, merge_columns=list(range(2, 2 + self.extra_cols)))
+            merge_columns = list(range(2, 2 + self.extra_cols))
         else:
-            self.__merge(ws)
+            merge_columns = [2]
+
+        start_row = 4
+        max_row = ws.max_row + 1
+        key = None
+
+        # Iterate all rows in key_column
+        for row, row_cells in enumerate(ws.iter_rows(min_col=2, min_row=start_row, max_col=2, max_row=max_row), start_row):
+            if key != row_cells[0].value or row == max_row:
+                if key is not None:
+                    for merge_column in merge_columns:
+                        ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
+                        ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    start_row = row
+                key = row_cells[0].value
+            if row == max_row:
+                row += 1
 
     def __visual(self, ws, plot_index, data_table, show_axes) -> None:
         def color_palette(n):
@@ -604,26 +617,6 @@ class Snapshot:
             c1 += c2
 
         ws.add_chart(c1, f"B{ws.max_row + 5}")
-
-    def __merge(self, ws, merge_columns=[2]) -> None:
-
-        # Merge cells
-        key_column = 2
-        start_row = 4
-        max_row = ws.max_row + 1
-        key = None
-
-        # Iterate all rows in key_column
-        for row, row_cells in enumerate(ws.iter_rows(min_col=key_column, min_row=start_row, max_col=key_column, max_row=max_row), start_row):
-            if key != row_cells[0].value or row == max_row:
-                if key is not None:
-                    for merge_column in merge_columns:
-                        ws.merge_cells(start_row=start_row, start_column=merge_column, end_row=row - 1, end_column=merge_column)
-                        ws.cell(row=start_row, column=merge_column).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                    start_row = row
-                key = row_cells[0].value
-            if row == max_row:
-                row += 1
 
     def __preprocess(self) -> None:
         self.profile_data = pd.DataFrame(self.profile_data)
