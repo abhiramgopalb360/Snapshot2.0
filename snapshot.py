@@ -14,7 +14,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from vyper.utils.tools import StatisticalTools as st
 
 import preprocessing
-from explorer import DataProfiler  # 100522 customized explorer
+from vyper.user.explorer import DataProfiler
 
 warnings.filterwarnings("ignore")
 
@@ -26,7 +26,7 @@ class Snapshot:
         segment_col: str,
         baseline: str = "",
         segments: list = [],
-        bins_path: str = "",
+        bins_path: str = "",                          # TODO: change to take either csv or excel
         dictionary_path: str = "",
         nbins: int = 6,
         na_drop_threshold: float = 0.95,
@@ -39,7 +39,7 @@ class Snapshot:
 
         self.profile_data = profile_data
         self.segment_col = segment_col
-        self.dictionary_path = dictionary_path
+        self.dictionary_path = dictionary_path        # TODO: change to take either csv or excel
         self.nbins = nbins
         self.na_drop_threshold = na_drop_threshold    # TODO: add logic to drop variables above na_drop_threshold
         self.include = include                        # TODO: add funtionality to force include variable
@@ -624,5 +624,5 @@ class Snapshot:
         if self.epsilon:
             self.profile_data = preprocessing.epsilon_preprocess(self.profile_data)
         elif self.acxiom:
-            # TODO add preprocessing for acxiom
+            # TODO future enhancement: add preprocessing for acxiom
             pass
