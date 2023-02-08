@@ -26,7 +26,7 @@ class Snapshot:
         segment_col: str,
         baseline: str = "",
         segments: list = [],
-        bins_path: str = "",                          # TODO: change to take either csv or excel
+        bins_path: str = "",
         dictionary_path: str = "",
         nbins: int = 6,
         na_drop_threshold: float = 0.95,
@@ -39,14 +39,24 @@ class Snapshot:
 
         self.profile_data = profile_data
         self.segment_col = segment_col
-        self.dictionary_path = dictionary_path        # TODO: change to take either csv or excel
+        self.dictionary_path = dictionary_path
         self.nbins = nbins
         self.na_drop_threshold = na_drop_threshold    # TODO: add logic to drop variables above na_drop_threshold
         self.include = include                        # TODO: add funtionality to force include variable
         self.continuous = continuous
-        self.description = description                # TODO: change to be set True by dictionary path
+        self.description = description
         self.epsilon = epsilon
         self.acxiom = acxiom
+
+        if dictionary_path:
+            if dictionary_path.endswith(".csv"):
+                df_continuous = pd.read_csv(dictionary_path)
+            elif dictionary_path.endswith(".xlsx"):
+                df_continuous = pd.read_excel(dictionary_path)
+            else:
+                raise ValueError("Invalid 'dictionary_path' provided")
+        else:
+            self.description = False
 
         if not segments:
             segments = profile_data[segment_col].unique().tolist()
@@ -70,10 +80,19 @@ class Snapshot:
                 self.mapping_dict[f"Segment_{i}"] = seg
 
         # get custom bounds for continuous vars
-        # TODO: add exception if no or invalid path provided
-        df_continuous = pd.read_csv(bins_path)
+        if bins_path:
+            if bins_path.endswith(".csv"):
+                df_continuous = pd.read_csv(bins_path)
+            elif bins_path.endswith(".xlsx"):
+                df_continuous = pd.read_excel(bins_path)
+            else:
+                raise ValueError("Invalid 'bins_path' provided")
+        else:
+            df_continuous = pd.DataFrame()
+
         # Drop variables that do not have pre-defined bins
         df_continuous.dropna(inplace=True)
+
         # create bin dictionary for run_profiler()
         self.continuous_var_bounds = {}
         for _, row in df_continuous.iterrows():
@@ -140,10 +159,7 @@ class Snapshot:
         profile = profile[col_order + index_order]
 
         for i in profile.columns:
-
-            if "Count" in i:
-                profile[i][profile[i].isna()] = 0
-            if "Percent" in i:
+            if ("Count" in i) | ("Percent" in i):
                 profile[i][profile[i].isna()] = 0
 
         # Defining PSI
@@ -163,7 +179,6 @@ class Snapshot:
                 psi[row["Variable"]][row["Category"]] = {}
 
             for i in NumPSI:
-
                 try:
                     psi[row["Variable"]][row["Category"]][i + "_PSI"] = (row[uscol] - row[i]) * np.log(row[uscol] / row[i])
                     if psi[row["Variable"]][row["Category"]][i + "_PSI"] == np.inf:
@@ -175,11 +190,9 @@ class Snapshot:
 
         overall = {}
         for variable in psi:
-
             for label in psi[variable]:
                 if "Overall" in str(label):
                     continue
-
                 for scores in psi[variable][label]:
                     if variable not in overall:
                         overall[variable] = {}
@@ -203,12 +216,12 @@ class Snapshot:
 
         profile = self.profile.copy(deep=True)
 
-        Field_dict = pd.read_excel(self.dictionary_path)
-        Field_dict = Field_dict.loc[:, "NAME":"Category"]
-        Field_dict["NAME"].fillna(method="ffill", inplace=True)
-        Field_dict["Snowflake"].fillna(method="ffill", inplace=True)
-        Field_dict["Value"].fillna("", inplace=True)
-        Field_dict.columns = ["NAME", "Description", "RATEID", "Value", "Value Description", "Current Count", "Current %", "Snowflake", "Category"]
+        field_dict = pd.read_excel(self.dictionary_path)
+        field_dict = field_dict.loc[:, "NAME":"Category"]
+        field_dict["NAME"].fillna(method="ffill", inplace=True)
+        field_dict["Snowflake"].fillna(method="ffill", inplace=True)
+        field_dict["Value"].fillna("", inplace=True)
+        field_dict.columns = ["NAME", "Description", "RATEID", "Value", "Value Description", "Current Count", "Current %", "Snowflake", "Category"]
 
         prev_dict = {}
 
@@ -233,7 +246,7 @@ class Snapshot:
             # prev_dict[snowflake][Value]['Current %'] = CP
             return prev_dict
 
-        Field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
+        field_dict.apply(lambda x: toDict(x["NAME"], x["Value"], x["Value Description"], x["Snowflake"], x["Description"]), axis=1)
 
         # Add the Field Name
         def addFieldName(x):
@@ -273,8 +286,7 @@ class Snapshot:
         profile.insert(3, "Description", "")
         profile["Description"] = profile.apply(lambda x: addValuedescription(x["Variable"], str(x["Category"])), axis=1)
 
-        # TODO: change to self.profile
-        self.profile_extra = profile
+        self.profile = profile
 
     def create_profile(self, filename, split_category=False) -> None:
 
@@ -284,10 +296,7 @@ class Snapshot:
         if split_category:
             for cat in self.unique_categories[::-1]:
                 snowflake_vars = [key for key, value in self.categories.items() if value == cat]
-                if self.description:
-                    subset_profile = self.profile_extra[self.profile_extra["Variable"].isin(snowflake_vars)]
-                else:
-                    subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
+                subset_profile = self.profile[self.profile["Variable"].isin(snowflake_vars)]
 
                 if subset_profile.empty:
                     continue
@@ -300,12 +309,7 @@ class Snapshot:
         profiling_ws = wb.create_sheet("Profile", 0)
         profiling_ws = wb.active
 
-        if self.description:
-            final_profile = self.profile_extra
-        else:
-            final_profile = self.profile
-
-        self.__allformat(profiling_ws, final_profile)
+        self.__allformat(profiling_ws, self.profile)
 
         ws2 = wb.create_sheet("PSI")
 
@@ -317,7 +321,7 @@ class Snapshot:
             for c_idx, value in enumerate(row, 1):
                 ws2.cell(row=r_idx, column=c_idx, value=value)
 
-        # TODO: raise error if save file is not .xlsx
+        assert filename.endswith(".xlsx"), "Profile must be saved as .xlsx"
         wb.save(filename)
 
     def create_visual(self, filename, plot_index=True, data_table=False, show_axes=True, show_na=True) -> None:
@@ -325,20 +329,14 @@ class Snapshot:
         wb = Workbook()
         del wb["Sheet"]
 
-        if self.description:
-            profile = self.profile_extra.copy(deep=True)
-        else:
-            profile = self.profile.copy(deep=True)
+        self.profile["Variable"] = self.profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
 
-        profile["Variable"] = profile["Variable"].apply(lambda name: name[:31] if len(name) >= 31 else name)
-
-        for var in profile["Variable"].unique()[::-1]:
-            subset_profile = profile[profile["Variable"] == var]
+        for var in self.profile["Variable"].unique()[::-1]:
+            subset_profile = self.profile[self.profile["Variable"] == var]
 
             if subset_profile.empty:
                 continue
 
-            # create sheet
             profiling_ws = wb.create_sheet(var, 0)
             profiling_ws = wb.active
 
@@ -353,7 +351,7 @@ class Snapshot:
         for i in wb.sheetnames:
             all_var_profiling_ws1.append([i])
 
-        # TODO: raise error if save file is not .xlsx
+        assert filename.endswith(".xlsx"), "Visual must be saved as .xlsx"
         wb.save(filename)
 
     def __allformat(self, ws, profile, show_na=True) -> None:
